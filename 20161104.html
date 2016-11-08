@@ -1,0 +1,63 @@
+<html><head><link rel="stylesheet" href="style.css"></head><body><div class="page">
+<h1>20161104 - Is OpenVR Actually Open?</h1>
+<br>
+References,<br>
+<a href="https://github.com/ValveSoftware/openvr/wiki/API-Documentation">OpenVR Documentation</a><br>
+<br>
+<center><iframe width="560" height="315" src="https://www.youtube.com/embed/plRjxIclou8" frameborder="0" allowfullscreen></iframe></center>
+<br>
+As someone who was waiting for an Open VR API, 
+I watched the above linked YouTube presentation from Steam Dev Days, 
+and decided to see if such an API actually has now arrived (as of November 2016). 
+Something which might enable me to continue the work I had to stop a while back 
+when consumer VR got locked down and disabled my ability to do what I needed as a developer. 
+Lets see how the current OpenVR stacks up,
+<br>
+<br>
+<ul>
+<li><strong>Ability to Use Vulkan?</strong> - Looks like this is in progress based on the YouTube video. Very happy about this.
+<br>
+<br>
+<li><strong>Language Agnostic?</strong> - OpenVR requires C++, 
+<i>"The API is implemented as a set of C++ interface classes full of pure virtual functions"</i>. 
+OpenVR is effectively closed to other languages because it does not support standard C exports.
+<br>
+<br>
+<li><strong>Application Ownership of Display?</strong> - Specifically open ability for the application 
+(sold directly to the consumer, or sold through Steam) to have full ownership of the HMD display output 
+without being forced to go through an out-of-process compositor, and with ability to do the ultimate in low-latency: front-buffer rendering.
+<br>
+<br>
+The <a href="https://github.com/ValveSoftware/openvr/wiki/IVRSystem::ComputeDistortion">ComputeDistortion</a> and other related functions 
+do provide ability to query the image transform required for direct rendering. 
+Unfortunately this function, based on the docs, does not have an obvious return value of if the coordinate can be seen or not. 
+Seems like one has to use <a href="https://github.com/ValveSoftware/openvr/wiki/IVRSystem::GetHiddenAreaMesh">GetHiddenAreaMesh</a> instead 
+and then write some complex code to check if the pixel intersects the mesh. This problem seems relatively minor to fix in the OpenVR API.
+<br>
+<br>
+The only display interface on the 
+<a href="https://github.com/ValveSoftware/openvr/wiki/API-Documentation">API Documentation Page</a> says, 
+<i>"IVRCompositor - Allows an application to render 3D content through the VR compositor"</i>. 
+Which is a very interesting choice of words for an "Open" API. 
+The idea that the application needs to do something to be "allowed" to render 3D content, 
+and only "allowing" such 3D content to go through some non-application VR compositor? 
+I only see a <a href="https://github.com/ValveSoftware/openvr/wiki/IVRCompositor::Submit">Submit</a> function. 
+So no front-buffer access, and also no back-buffer access (no ability to create your own swap chain). 
+Looking deeper at the <a href="https://github.com/ValveSoftware/openvr/blob/master/headers/openvr.h">openvr.h</a> headers reveals, 
+<tt>EVRSubmitFlags</tt>, 
+which has a comment which confirms that the API only supports the highest overhead path of an extra copy in an out-of-process compositor: 
+<i>"/** Allows the application to control how scene textures are used by the compositor when calling Submit. */"</i>. 
+Again the "Allows" wording. 
+Digging deeper there is <i>"Submit_LensDistortionAlreadyApplied = 0x01"</i>, 
+which does seem to provide un-WIKI-documented support for submitting a post-warped image.
+</ul></li>
+<br>
+<br>
+<b>And the Conclusion Is ...</b>
+<br>
+<i>Not there yet.</i>
+<br>
+Once an application sold on Steam can run VR with Vulkan, 
+and with application-owned HMD display with direct front-buffer access, 
+then it will be time to re-evaluate.
+</div></body></html>
