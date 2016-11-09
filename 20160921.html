@@ -1,0 +1,60 @@
+<html><head><link rel="stylesheet" href="style.css"></head><body><div class="page">
+<h1>20160921 - Parallel Noise Generation</h1>
+<br>
+
+Re a related <a href="https://twitter.com/pixelmager/status/778573539939127297">Twitter Post</a> ...
+<br>
+<br>
+Concerning making tile-able textures for grain or noise, and getting various desired properties.
+My preference is towards algorithms which parallelize trivially.
+
+The <a href="https://www.shadertoy.com/view/4sBSDW">shadertoy referenced in the tweet</a>
+generates a noise pattern,
+by starting out with some poor non-random noise, 
+then applying filters (ending with a high-pass) to transform it into something which is pleasing to the eye.
+I'd advise always using the technique I outlined in this <a href="http://gpuopen.com/vdr-follow-up-fine-art-of-film-grain/">GPUOpen Post</a>
+which remaps the texture to a perfect distribution of values (see the <a href="http://gpuopen.com/vdr-follow-up-grain-and-fine-details/">follow up post as well</a>)
+while maintaining it's original form (this applies to both techniques in this post).
+<br>
+<br>
+A second technique I've leveraged in the past
+is to work with one {x,y} coordinate for a grain position 
+distributed in a regular grid array of grains.
+Starting with the perfect honeycomb distribution 
+(start from a regular grid position, where every other row is shifted to the left or right, and make the grid have proper aspect ratio for honeycomb),
+<br>
+<br><tt>
+_x_x_x_x_x_x_x_x<br>
+x_x_x_x_x_x_x_x_<br>
+_x_x_x_x_x_x_x_x<br>
+x_x_x_x_x_x_x_x_<br>
+_x_x_x_x_x_x_x_x<br>
+x_x_x_x_x_x_x_x_<br>
+_x_x_x_x_x_x_x_x<br>
+x_x_x_x_x_x_x_x_
+</tt><br>
+<br>
+Then permuting grain position by some function (which could be a noise function with various distributions based on frequency,
+or perhaps do some kind of clustered rotation of points by nearest cluster, etc).
+This process typically results in undesired look.
+Then applying various passes on the array where the position of each grain is filtered against the positions of the pre-filtered neighbors (only dependent on prior pass).
+The point being to re-shape the array into something which has a more visually pleasing feel.
+The filter can work with a hex neighborhood (neighbors depend on if the pixel is on a even or odd row),
+<br>
+<br><tt>
+_x_x_ ... ab_ ... _ab<br>
+x_x_x ... cde ... cde<br>
+_x_x_ ... ef_ ... _ef
+</tt><br>
+<br>
+Could be something as easy as relaxing the position of the point 
+(push the point in the direction towards being equal distance from neighbors, but not so much that one resets to a honeycomb).
+After getting grains distributed as desired, can use for {x,y} coordinates, or transform back into an image of grain (which could be a different resolution image).
+<br>
+<br>
+ 
+
+</div></body></html>
+
+
+
