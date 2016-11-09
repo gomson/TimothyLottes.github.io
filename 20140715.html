@@ -1,0 +1,186 @@
+<html><head><link rel="stylesheet" href="style.css"></head><body><div class="page">
+<h1>20140715 - Infinte Projection Matrix Notes</h1>
+<br>
+
+<i>If you are reading this and have to deal with GL/GLES vendors not supporting DX style [0 to 1] clip space, please talk to your hardware/OS vendors and ask for it!!</i><br>
+<br>
+
+<b>Clip Coordinates (CC)</b>
+<br>
+Output of the vertex shader,<br>
+<tt>GL: gl_Position<br>
+DX: SV_Position</tt><br>
+<br>
+<br>
+
+<b>Normalized Device Coordinates (NDC)</b>
+<br>
+The following transform is done after the vertex shader,<br>
+<br>
+<tt>NDC = float4(CC.xyz * rcp(CC.w), 1.0);</tt><br>
+<br>
+On both GL and DX <tt>NDC.xy</tt> are [-1 to 1] ranged. On DX <tt>NDC.z</tt> is [0 to 1] ranged. On GL <tt>NDC.z</tt> is [-1 to 1] ranged and this can cause precision problems (see below in Window Coordinate transform). Anything outside the range is clipped by hardware unless in DX11 <tt>DepthClipEnable=FALSE</tt>, or in GL <tt>glEnable(GL_DEPTH_CLAMP)</tt> is used to clamp clipped geometry to the near and far plane.<br>
+<br>
+<br>
+
+<b>Window Coordinates (WC) : DX11</b>
+<br>
+The following transform is done in hardware,<br>
+<br>
+<tt>float3 WC = float3(<br>
+NDC.x * (W*  0.5 ) + (X + W*0.5),<br>
+NDC.y * (H*(-0.5)) + (Y + H*0.5),<br>
+NDC.z * (F-N) + N);</tt><br>
+<br>
+With parameters specified by <tt>RSSetViewports()</tt>,<br>
+<br>
+<tt>X = D3D11_VIEWPORT.TopLeftX;<br>
+Y = D3D11_VIEWPORT.TopLeftY;<br>
+W = D3D11_VIEWPORT.Width;<br>
+H = D3D11_VIEWPORT.Height;<br>
+N = D3D11_VIEWPORT.MinDepth;<br>
+F = D3D11_VIEWPORT.MaxDepth;</tt><br>
+<br>
+Fractional viewport parameters for <tt>X</tt> and <tt>Y</tt> are supported on DX11. DX10 does not support fractional viewports, and DX11 feature level 9 implicitly casts to <tt>DWORD</tt> internally insuring fractional viewport will not work. Not sure if DX11 feature level 10 supports fractional viewports or not. Both <tt>N</tt> and <tt>F</tt> are required to be in the [0 to 1] range. It is better to not use the viewport transform to modify depth and instead fold any transform into the application projection shader code. For best precision, <tt>N</tt> should be zero.<br>
+<br>
+<br>
+
+<b>Window Coordinates (WC) : GL</b>
+<br>
+The following transform is done in hardware,<br>
+<br>
+<tt>float3 WC = float3(<br>
+NDC.x * (W*0.5) + (X + W*0.5),<br>
+NDC.y * (H*0.5) + (Y + H*0.5),<br>
+NDC.z * ((F-N)*0.5) + (N+F)*0.5);</tt><br>
+<br>
+<br>
+
+<b>Window Coordinates (WC) : OpenGL 4.2 and OpenGL ES 2.0</b>
+<br>
+These versions of GL have the following form to specify input parameters,<br>
+<br>
+<tt>glDepthRangef(GLclampf N, GLclampf F); // ES and some versions of GL</tt><br>
+<tt>glDepthRange(GLclampd N, GLclampd F); // GL</tt><br>
+<tt>glViewport(GLint X, GLint Y, GLsizei W, GLsizei H);</tt><br>
+<br> 
+Note the inputs to <tt>glDepthRange*()</tt> are clamped to [0 to 1] range. This insures <tt>NDC.z</tt> is biased by a precision destroying floating point addition. The default <tt>N=0</tt> and <tt>N=1</tt> results in,<br>
+<br>
+<tt>WC.z = NDC.z * 0.5 + 0.5;</tt><br>
+<br>
+Which when computed with standard 32-bit floating point, I believe has in theory exactly only enough precision for 24-bit integer depth buffers.<br>
+<br>
+<br>
+
+<b>Window Coordinates (WC) : OpenGL 4.3 and OpenGL ES 3.0</b>
+<br>
+These versions of OpenGL dropped the clamp type resulting in,<br>
+<br>
+<tt>glDepthRangef(GLfloat N, GLfloat F);</tt><br>
+<br>
+Both specs say, <i>"If a ?xed-point representation is used, the parameters n and f are clamped to the range [0;1] when computing zw"</i>. So in theory for floating point depth buffers the following can be specified,<br>
+<br>
+<tt>glDepthRangef(-1.0f, 1.0f);</tt><br>
+<br>
+Which results in no precision destroying floating point addition in the Window Coordinate transform,<br>
+<br>
+<tt>WC.z = NDC.z * 1.0 + 0.0;</tt><br>
+<br>
+However at least some vendor(s) still do the clamp anyway. To get around the clamp in GL one can use <a href="https://www.opengl.org/registry/specs/NV/depth_buffer_float.txt">GL_NV_depth_buffer_float</a> which provides <tt>glDepthRangedNV()</tt> which is <a href="http://delphigl.de/glcapsviewer/listreports.php?listreportsbyextension=GL_NV_depth_buffer_float">supported by both AMD and NVIDIA</a>.<br>
+<br>
+<br>
+<b>Projection Matrix</b>
+<br>
+General form,<br>
+<br>
+<tt>X 0 0 0<br>
+0 Y 0 0<br>
+0 0 A 1<br>
+0 0 B 0</tt><br>
+<br>
+The A=0 case provides the highest precision. Next highest precision from <tt>A=1</tt> or <tt>A=-1</tt>, then ideally choose <tt>A</tt> to have an exact representation in floating point. In the low precision cases, it is better for precision to break the model view projection matrix into two parts for an increase in just one scalar multiply accumulate operation overall,<br>
+<br>
+<tt>// Constants<br>
+float4 ConstX = ModelViewMatrixX * X;<br>
+float4 ConstY = ModelViewMatrixY * Y;<br>
+float4 ConstZ = ModelViewMatrixZ;<br>
+float2 ConstAB = float2(A, B);<br>
+<br>
+// Vertex shader work<br>
+float3 View = float3(<br>
+dot(Vertex, ConstX) + ConstX.w,<br>
+dot(Vertex, ConstY) + ConstY.w,<br>
+dot(Vertex, ConstZ) + ConstZ.w);<br>
+<br>
+float3 Projected = float3(<br>
+View.x,<br>
+View.y,<br>
+View.z * ConstA + ConstB,<br>
+View.z);</tt><br>
+<br>
+<br>
+
+<b>Projection Matrix : Infinite Reversed (1=near, 0=far)</b>
+<br>
+This is both the fastest and highest precision path. For DX, or GL using <tt>glDepthRangedNV(-1.0, 1.0)</tt>,<br>
+<br>
+<tt>X 0 0 0<br>
+0 Y 0 0<br>
+0 0 0 1<br>
+0 0 N 0</tt><br>
+<br>
+This can be optimized to the following,<br>
+<br>
+<tt>// Constants<br>
+float4 ConstX = ModelViewMatrixX * X;<br>
+float4 ConstY = ModelViewMatrixY * Y;<br>
+float4 ConstZ = ModelViewMatrixZ;<br>
+float ConstN = N; // Ideally N=1 and no constant is needed.<br>
+<br>
+// Vertex shader work<br>
+float4 Projected = float4(<br>
+dot(Vertex, ConstX) + ConstX.w,<br>
+dot(Vertex, ConstY) + ConstY.w,<br>
+ConstN,<br>
+dot(Vertex, ConstZ) + ConstZ.w);</tt><br>
+<br>
+For GL without <tt>glDepthRangedNV(-1.0, 1.0)</tt>,<br>
+<br>
+<tt>X 0 0__ 0<br>
+0 Y 0__ 0<br>
+0 0 -1_ 1<br>
+0 0 2*N 0</tt><br>
+<br>
+Which can be optimized to the following,<br>
+<br>
+<tt>// Constants<br>
+vec4 ConstX = ModelViewMatrixX * X;<br>
+vec4 ConstY = ModelViewMatrixY * Y;<br>
+vec4 ConstZ = ModelViewMatrixZ;<br>
+float ConstN = 2.0 * N; // Ideally N=1 and no constant is needed.<br>
+<br>
+// Vertex shader work<br>
+vec4 Projected;<br>
+Projected.w = dot(Vertex, ConstZ);<br>
+Projected.xyz = float3(<br>
+dot(Vertex, ConstX) + ConstX.w,<br>
+dot(Vertex, ConstY) + ConstY.w,<br>
+ConstN - Projected.w);</tt><br>
+<br>
+<br>
+<b>References</b>
+<br>
+<a href="http://www.humus.name/Articles/Persson_CreatingVastGameWorlds.pdf">http://www.humus.name/Articles/Persson_CreatingVastGameWorlds.pdf</a><br>
+<a href="http://www.geometry.caltech.edu/pubs/UD12.pdf">http://www.geometry.caltech.edu/pubs/UD12.pdf</a><br>
+<a href="http://outerra.blogspot.com/2012/11/maximizing-depth-buffer-range-and.html">http://outerra.blogspot.com/2012/11/maximizing-depth-buffer-range-and.html</a><br>
+ 
+
+
+ 
+
+
+</div></body></html>
+
+
+
+
