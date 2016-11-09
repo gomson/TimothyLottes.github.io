@@ -1,0 +1,120 @@
+<html><head><link rel="stylesheet" href="style.css"></head><body><div class="page">
+<h1>20161027 - FXAA Pixel Width Contrast Reduction</h1>
+<br>
+<pre>
+FXAA was designed to reduce contrast on pixel-width content.
+Effectively any single pixel width feature will alias temporally.
+The intent was to reduce the visibility of that temporal aliasing,
+but not otherwise low-pass non-pixel-width content.
+
+I don't believe this part of FXAA was well described,
+so I've described it below with some new code comments.
+
+Effectively the algorithm takes the absolute value of the high-pass,
+then shapes that value for a better transition,
+and uses it to push the color value away from itself.
+
+
+// ---- 3x3 neighborhood of pixels around middle pixel 'M',
+// ----   NW  N  NE
+// ----    W  M  E
+// ----   SW  S  SE
+// ---- The 'range' is the range of luma on the '+' pattern, 
+// ----   range = max(N, W, M, E, S) - min(N, W, M, E, S) 
+//
+FxaaFloat range = rangeMax - rangeMin;
+
+...
+
+// ---- Rcp = reciprocal.
+//
+FxaaFloat subpixRcpRange = 1.0/range;
+
+// ---- The 'subpixNSWE' takes the sum of the '+' pattern luma without the middle pixel,
+// ----   subpixNSWE = sum(N, S, W, E) 
+//
+FxaaFloat subpixNSWE = lumaNS + lumaWE;
+
+...
+
+// ---- The 'subpixNWSWNESE' takes the sum of luma of the corner pixels.
+// ----   subpixNWSWNESE = sum(NW, SW, NE, SE)
+//
+FxaaFloat subpixNWSWNESE = lumaNWSW + lumaNESE;
+
+...
+
+// ---- Starting to compute the following kernel for luma,
+// ----   1 2 1
+// ----   2   2  -> sums to 12
+// ----   1 2 1
+//
+FxaaFloat subpixA = subpixNSWE * 2.0 + subpixNWSWNESE;
+
+...
+
+// ---- Finish off computation for filter kernel,
+// ----   1  2  1
+// ----   2 -12 2
+// ----   1  2  1
+// ---- Takes low-pass of neighborhood and subtracts middle pixel.
+// ---- The 'subpixB' is the result of the high-pass filter.
+//
+FxaaFloat subpixB = (subpixA * (1.0/12.0)) - lumaM;
+
+...
+
+// ---- Normalize highpass by dividing by local range from '+' pattern.
+// ---- This needs a saturation, as local range isn't the full 3x3 neighborhood used in the kernel.
+// ---- Output is between,
+// ----   0.0 when middle pixel is same as neighborhood.
+// ----   1.0 when middle pixel differs from neighborhood (detect pixel sized features).
+//
+FxaaFloat subpixC = FxaaSat(abs(subpixB) * subpixRcpRange);
+
+...
+
+// ---- The 'subpixF' output is 'subpixC' shaped by smooth step, 'f(x){return x*x*(3-2*x);}'.
+//
+FxaaFloat subpixD = ((-2.0)*subpixC) + 3.0;
+...
+FxaaFloat subpixE = subpixC * subpixC;
+...
+FxaaFloat subpixF = subpixD * subpixE;
+
+...
+
+// ---- Slow down transition.
+// 
+FxaaFloat subpixG = subpixF * subpixF;
+
+...
+
+// ---- Modulate by control knob.
+//
+FxaaFloat subpixH = subpixG * fxaaQualitySubpix;
+
+...
+
+// ---- At the end FXAA computes a sub-pixel offset to resample from.
+// ---- The distance of this offset reduces the contribution of the pixel.
+// ---- Sub-pixel offset goes in direction of highest contrast (perpendicular to edge).
+// ---- Sub-pixel offset is constrained to only on the x or y axis.
+// ---- The 'pixelOffsetGood' part is the edge AA contribution.
+// ---- The 'subpix' part can override that, reducing contrast for pixel-sized features.
+//
+FxaaFloat pixelOffsetGood = goodSpan ? pixelOffset : 0.0;
+FxaaFloat pixelOffsetSubpix = max(pixelOffsetGood, subpixH);
+if(!horzSpan) posM.x += pixelOffsetSubpix * lengthSign;
+if( horzSpan) posM.y += pixelOffsetSubpix * lengthSign;
+#if (FXAA_DISCARD == 1)
+    return FxaaTexTop(tex, posM);
+#else
+    return FxaaFloat4(FxaaTexTop(tex, posM).xyz, lumaM);
+#endif
+</pre>
+</div></body></html>
+
+
+
+
