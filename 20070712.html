@@ -1,0 +1,31 @@
+<html><head><link rel="stylesheet" href="style.css"></head><body><div class="page">
+<h1>20070712 - Fragment Raytracer</h1>
+<br>
+
+
+
+Not all ideas make it into something useful, this one is from my archives of things that never made it very far. 
+I knew it wouldn't run fast enough, but wanted to see exactly what it would look like.
+<br>
+<br>
+Combine 3D semi-transparent textures and ray tracing, all done in a fragment shader. 
+Takes 3 textures, color+ray intersection acceleration distance, and material properties. 
+Here is the result of rendering a 64x64x64 sized 3D texture that contained a bunch of spheres. 
+Might be something to come back to when GPUs are 10x faster.
+<br>
+<br>
+The "low polygon count" look is actually from the bilinear interpolation of the 64x64x64 textures, 
+and the glow is caused by the normals being blended...
+<br>
+<br>
+
+<center>
+<img src="20070712.jpg">
+</center>
+
+
+
+</div></body></html>
+
+
+
