@@ -1,0 +1,44 @@
+<html><head><link rel="stylesheet" href="style.css"></head><body><div class="page">
+<h1>20161015 - Atomic Scatter-Only Gather-Free Machines</h1>
+<br>
+
+
+
+GPUs are build around having texture caches, 
+and caches are build around collecting loads for the most part,
+because loads have the highest memory traffic typically.
+So if after stripping out the caches from a highly parallel machine,
+perhaps gathering data to centralized location for processing,
+and then scattering it out again, is not the best model?
+
+<br>
+<br>
+One possible alternative would be to switch to a scatter-centric design.
+On-chip memory gets divided across all the cores.
+Each core contains the required remote procedure (RP) functions to interact with the data associated with the core.
+Programs are composed of fire-and-forget message passing.
+Message contains arguments to the RP and index/address of the RP to execute.
+The model is return-free,
+and the RP only has access to the arguments in the message and the local memory of the core.
+<br>
+<br>
+This is conceptually similar to taking the GPU's global atomic without return, and making it fully programmable.
+<br>
+<br>
+This brings up a new challenge, 
+that in order to fully load the machine,
+data needs to be evenly distributed across the cores based on amount of RP access.
+Conceptually in this model, each core is a bank of distributed memory, and a mid-range FPGA might have upwards of 1024 banks (each one BRAM).
+Need to ensure an algorithm doesn't camp on one bank of memory.
+<br>
+<br>
+Likewise if any data is duplicated across cores for the sake of higher throughput,
+one might want to build in something into the routing logic which takes the first found compatible core which can service the RP.
+Also message broadcast with variable 2D locality would be very important for data amplification.
+
+
+
+</div></body></html>
+
+
+
