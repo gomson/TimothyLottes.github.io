@@ -1,0 +1,29 @@
+<html><head><link rel="stylesheet" href="style.css"></head><body><div class="page">
+<h1>20090501 - 32bpp HDR Blending Idea</h1>
+<br>
+<pre>The goal is to get 16-bit per channel HDR with only 32-bit per pixel and still have an additive blendable framebuffer.
+
+...
+
+If alpha is needed (for example doing particle blending), 
+then a different color channel decimation will be required such as this one,
+
+GA RA GA RA
+BA GA BA GA
+GA RA GA RA
+BA GA BA GA
+
+This is now much closer to the Bayer Grid seen on common digital cameras. 
+Remember to keep 2 greens per one blue and one red. 
+The result here is 1/4 area chrominance.
+
+NOT FOR OLDER HARDWARE
+======================
+Unfortunately this trick requires a render target format (16-bit dual channel) 
+  not available on a bunch of older hardware (like Geforce 7 series, PS3, etc). 
+Will work on 360 however using an 16-bit integer format.
+</pre>
+</div></body></html>
+
+
+
