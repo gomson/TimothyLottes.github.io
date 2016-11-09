@@ -1,0 +1,20 @@
+<html><head><link rel="stylesheet" href="style.css"></head><body><div class="page">
+<h1>20090407 - DXT Tip</h1>
+<br>
+
+When using a compressed format like DXT1 or DXT5 which only has 5-bits base red|blue level and 6-bits for base green level, normalizing the texture luminosity before compression and scaling in the fragment shader can be quite an improvement in quality. This I believe is common practice for everyone.
+<br>
+<br>
+If using a proper linear lighting model, the 360's piece wise sRGB conversion effectively removes about a bit of precision in the darks for DXT* compressed textures. So skipping using 360's sRGB conversion and doing a gamma 2.0 conversion manually (at the cost of an extra MUL op) can provide around 0.5 bits of precision back to the darks. Other option is to eat the cost of a gamma 2.2 manual conversion for no loss in precision (compared to the PC).
+And The Tip
+<br>
+<br>
+<strong>
+Go a step further and normalize each color channel individually before compression.</strong> For textures which are mostly gray, this will only provide a fractional bit precision improvement. For those textures which are highly tinted towards one color, (such as foliage), it can provide an extra bit or two of precision in the non-dominate color channels.
+
+
+
+</div></body></html>
+
+
+
