@@ -1,0 +1,45 @@
+<html><head><link rel="stylesheet" href="style.css"></head><body><div class="page">
+<h1>20070703 - Cost of Bandwidth</h1>
+<br>
+
+One obvious cost to factor into any online game is the cost of network bandwidth and hosting.
+<br>
+<br>
+<ol><li>Cost of network bandwidth (dedicated server) is about $0.25/GB/month.</li></ol>
+<br>
+In terms of handling peak bandwidth.
+<br>
+<br>
+<ol><li>One dedicated server peak bandwidth flows through a 100Mbps ethernet card.</li> 
+<li>So peak bandwidth is 12.5 MB/s.</li> 
+<li>Which is 204,800 packets/s of minimum sized UDP packets.</li> 
+<li>Which is 10K cycles/packet on a 2GHz server.</li> 
+<li><strong>BOTTOM LINE, one server can handle peak bandwidth.</strong></li></ol>
+<br>
+In terms of average bandwidth.
+<br>
+<br>
+<ol><li>Average bandwidth has to be well under peak levels (2% to 10%).</li> 
+<li>Typical starting bandwidth is 640 GB/month (for $150/month).</li> 
+<li>This is an average of 250 KB/s.</li> 
+<li>Typical maximum bandwidth for one server is 3840 GB/month (for $775/month).</li> 
+<li>This is an average of 1503 KB/s.</li></ol>
+<br>
+Given a server centric model (all traffic goes through server), taking in consideration a <a href="20070702.html">1/9 online time factor</a> (players only play 11% of the time), 
+and a full 128 Kbps constant network connection, the maximum bandwidth case could only support 845 players, and would cost about $1/player/month for bandwidth. 
+<strong>BOTTOM LINE, server centric model cannot support a large number of high bandwidth connections.</strong>
+<br><br>
+Most current online FPS (first person shooter) games use server centric model with high bandwidth connections, and thus have a very limited number of players per server, 
+which can be seen in the <a href="http://archive.gamespy.com/stats/">max players/server chart</a> on GameSpy. 
+The FPS genre doesn't fit well with the MMOG (massively multiplayer online game) model, 
+since they are limited usually to 16-64 players interacting at one time. The limitations of central server bandwidth is sure to be a factor in why a majority of MMOGs are RPGs (roll playing games), 
+due to RPGs needing only a very low bandwidth connection to the players.
+<br>
+<br>
+Atom however is going to have FPS interactivity with MMOG numbers of players, so a mix of P2P (peer to peer) and server centric network models is the only option.
+
+
+</div></body></html>
+
+
+
