@@ -1,0 +1,34 @@
+<html><head><link rel="stylesheet" href="style.css"></head><body><div class="page">
+<h1>20090505 - Compute Mega Post</h1>
+<br>
+<pre>...
+
+Methods to avoid any AOS to SOA conversion with SIMD,
+
+(1.) All lanes fetch from the same shared gathered object. 
+ This uses broadcast ability.
+
+(2.) If individual lanes need to fetch and work with different objects 
+  store each object starting on a different memory bank. 
+ See the pattern below (where '.' spacer words are free for some other usage). 
+
+0123456789abcdef <- bank
+----------------
+00000000.1111111 <- objects arranged in banked memory
+1.22222222.33333                                   
+333.44444444.555                                       
+55555.66666666.7
+7777777.88888888
+.99999999.aaaaaa
+aa.bbbbbbbb.cccc
+cccc.dddddddd.ee
+eeeeee.ffffffff.
+
+0123456789abcdef <- bank
+----------------
+092b4d6f81a3c5e7 <- first item of object
+</pre>
+</div></body></html>
+
+
+
