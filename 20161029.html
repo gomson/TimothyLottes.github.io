@@ -1,0 +1,69 @@
+<html><head><link rel="stylesheet" href="style.css"></head><body><div class="page">
+<h1>20161029 - Program Per Clock</h1>
+<br>
+<center><i>Current high-level hardware design thoughts for FPGA project ...</i></center>
+<br>
+<pre>
+=====================
+  PROGRAM PER CLOCK
+=====================
+The high level concept is to chain all ALUs on a massively multi-core machine,
+  such that each ALU runs one instruction of a program,
+  and each clock another instance of the program starts at head of chain.
+This is PPMD, or Pipelined Program Multiple Data.
+Programs act more like filters, are conditional branch free,
+  and effectively fully unrolled.
+The Multiple Data need not be constrained to a SIMD-width.
+Instruction/immediate fetch is fully amortized,
+  only costs when the program is changed, regardless of how much data flows through.
+Instructions/immediates are registered at the ALU and reused.
+Program intermediate state flows down the pipeline (forwarded).
+Chained ALUs perfect for accumulator style programming (minimize local state).
+Each ALU can maintain state temporally as well,
+  so reductions are serially work optimal (vs SIMD which has a log2 cost).
+The ALU is a FPGA DSP chained using dedicated hardware columns.
+Instructions effectively set the MUXes at DSP inputs or DSP controls or forwarding MUXes.
+
+=======================
+  SCATTER/PUSH DESIGN
+=======================
+Stores for local state are fully factored out from the program (forwarded instead).
+Only stores left act more like "commits" for data, and these stores are latency tolerant. 
+Atomics are factored into the "free reductions" (not needed).
+Some percentage of ALUs in the chain will support {address,value} outputs.
+On-chip routing network will handle getting writes to the correct bank of memory.
+
+====================
+  WHAT ABOUT READS
+====================
+This is the challenging part which likely needs lots more thought,
+  as design does not support hiding latency from reads.
+First some numbers thinking through GPU design,
+  4 Toperation/s : 0.5 Tbyte/s = 8:1 op/byte = 32:1 op/dword
+If the machine had roughly 1024 cores chained,
+  each mini-program on average would consume around 32 dwords of data.
+32 dwords is two 64-byte cachelines.
+Initial idea is to give some ALUs in the chain 
+  direct read access to one bank of a massively banked global memory. 
+This introduces the constraint that programs 
+  must generally access data in bank order, 
+  or forward read data to later in the program's execution.
+Addresses would be generated or forwarded from earlier parts of execution.
+
+=========
+  ALIEN
+=========
+So the programming model for this kind of machine is quite alien.
+But I like where the hardware design is going
+  as it minimizes the registering of program state during execution,
+  simplifies a lot of the challenges of parallel execution,
+  and makes it easy to maximize ALU throughput.
+Have a lot of other things to think through,
+  like how data compression fits in or not,
+  how the chain can be split for non-chain sized programs or not,
+  how to do program changes, etc.</pre>
+</div></body></html>
+
+
+
+
