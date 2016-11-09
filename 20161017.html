@@ -1,0 +1,86 @@
+<html><head><link rel="stylesheet" href="style.css"></head><body><div class="page">
+<h1>20161017 - Notes from Attempting to Understand FPGA Timing Limits</h1>
+<br>
+
+<i>I'm using the table I built below as a quick reference to think though timing while working on design.
+Reference from last time,
+<a href="http://www.xilinx.com/support/documentation/data_sheets/ds181_Artix_7_Data_Sheet.pdf">Artix-7 FPGAs Data Sheet: DC and AC Switching Characteristics</a>.
+Working from the Speed Grade -3 (fastest) numbers in ns below.</i>
+<br>
+<br>
+<pre>
+==========
+  TIMING
+==========
+Simplified drawing below
+Where phase of stages would in practice be different
+Where regions are not to scale
+                   _______________                 _______________ 
+  \_______________/               \_______________/               \
+   _______________________________
+  (____________STAGE_0____________)_______________________________
+                  .               (____________STAGE_1____________)
+                  .                               .               
+                  .                               .
+       |<- 0.45 ->|<- 0.31 ->|                    |<- 0.64 ->|
+          setup       hold                           delay
+
+        BRAM address register       BRAM registered read stable
+
+My mental model is that the 'delay' eats against the 'setup' for the next stage
+Each stage ends in a register (D flip-flop)
+The cumulative post register, combinatorial, and net 'delay' from any logic on the wire
+  must not violate the 'setup' time for the stage's register
+The 'hold' effects the limits of the phase of the stage (offset from positive clock edge)
+
+Timing limits from my (possibly flawed) understanding of the doc,
+
+  term  meaning
+  ====  =======
+  BRAM  block ram
+  CRAM  CLB distributed ram
+
+  number   meaning
+  =======  =======
+  0.07 ns  CLB 6:1 LUT setup time
+  0.59 ns  CLB complex setup time (larger than 6:1, carry)
+  0.12 ns  CLB 6:1 LUT hold time
+  0.08 ns  CLB complex hold time
+  -------  -------
+  0.47 ns  CLB 5:1x2 LUT registered delay (2 reg/LUT)
+  0.40 ns  CLB registered delay otherwise (1 reg/LUT)
+  -------  -------
+  0.10 ns  CLB 6:1 LUT combinatorial delay (no register)
+  0.27 ns  CLB 5:1x2 LUT combinatorial delay
+  0.68 ns  CLB maximum combinatorial delay for complex (larger than 6:1, carry)
+  -------  -------
+  0.26 ns  DSP a setup time
+  0.33 ns  DSP b setup time
+  0.17 ns  DSP c setup time
+  0.12 ns  DSP a hold time
+  0.15 ns  DSP b hold time
+  0.17 ns  DSP c hold time
+  0.33 ns  DSP p registered output delay  
+  -------  -------
+  0.45 ns  BRAM address setup time
+  0.31 ns  BRAM address hold time
+  0.64 ns  BRAM registered read delay before stable time
+  -------  -------
+  0.27 ns  CRAM address setup time
+  0.69 ns  CRAM address setup time with post-load carry or mux usage
+  0.55 ns  CRAM address hold time
+  0.18 ns  CRAM address hold time with post-load carry or mux usage
+  0.10 ns  CRAM read registered output delay (same as 6:1 LUT combinatorial delay)
+  0.98 ns  CRAM write registered output delay (CRAM 64-entry or smaller, etc)
+  2.10 ns  CRAM minimum clock period for writes (limits to 476 MHz?)  
+</pre>
+
+
+
+
+
+
+</div></body></html>
+
+
+
