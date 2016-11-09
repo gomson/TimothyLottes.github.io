@@ -1,0 +1,47 @@
+<html><head><link rel="stylesheet" href="style.css"></head><body><div class="page">
+<h1>20070707 - Management Server</h1>
+<br>
+
+
+In the Atom model, <a href="20070706.html">peer to peer</a> handles most of the player interactions, 
+and the central server serves as management providing the following key roles.
+<br>
+<br>
+<ol><li>Help connect players, punching holes through firewalls.</li> 
+<li>Keep the master copy of the persistent world state.</li> 
+<li>Deal with possible cheating or hacking into the game.</li> 
+<li>Manage players, stats, rankings, etc.</li></ol>
+<br>I use the following tables often when doing server protocol design reality checks. Keeping with a single server,
+ a <a href="20070703.html">640 GB/month bandwidth</a> quota, and using a 1/9 worst case <a href="20070702.html">percentage of player time online</a>.
+<br>
+<br>
+<ol><li>1000 players = 256 bytes/sec = 15360 bytes/min</li> 
+<li>5000 players = 51 bytes/sec = 3072 bytes/min</li> 
+<li>10000 players = 25 bytes/sec = 1536 bytes/min</li>
+ <li>50000 players = 5 bytes/sec = 307 bytes/min</li> 
+<li>100000 players = 2 bytes/sec = 153 bytes/min</li></ol>
+<br>
+And for a 3840 GB/month bandwidth quota.<br>
+<br>
+<ol><li>1000 players = 1536 bytes/sec = 92160 bytes/min</li> 
+<li>5000 players = 307 bytes/sec = 18432 bytes/min</li> 
+<li>10000 players = 153 bytes/sec = 9216 bytes/min</li> 
+<li>50000 players = 30 bytes/sec = 1843 bytes/min</li> 
+<li>100000 players = 15 bytes/sec = 921 bytes/min</li> 
+<li>500000 players = 3 bytes/sec = 184 bytes/min</li> 
+<li>1000000 players = 1 bytes/sec = 92 bytes/min</li></ol>
+<br>
+For performance reasons it is a good idea to keep all players data in the active memory of the server, 
+without overflowing into virtual memory and then slow disc access. 
+Assuming 256 bytes of data per player.<br>
+<br>
+<ol><li>65,536 players = 16MB</li> 
+<li>131,072 players = 32MB</li> 
+<li>262,144 players = 64MB</li> 
+<li>524,288 players = 128MB</li> 
+<li>1,048,576 players = 256MB</li></ol>
+
+</div></body></html>
+
+
+
