@@ -1,0 +1,28 @@
+<html><head><link rel="stylesheet" href="style.css"></head><body><div class="page">
+<h1>20131126 - Random Next Generation Notes</h1>
+<br>
+
+<b>Have Level Streaming</b> - Booting into the main game menu with no delay is a great step. Getting time into level down is the next important evolution. For multiplayer FPS, choose the next level while loading the current level. This way part of the load time is factored into the usually idle post-match time.<br>
+<br>
+<b>Support The Non-Party Player</b> - If your multiplayer FPS is nearly always matching up two teams, one with random single players against a team with a party of players who often play together, then you are doing something wrong. Sending the non-party players constantly to slaughter is not fun, even if the non-party player is always getting first place in team rank. Being assigned always to the loosing team results in players quiting the game, and likely the series of games which might follow.<br>
+<br>
+<b>Show Matchup During Level Load</b> - Given long level loads, no player wants to wait, only to find themselves in a game of just a few people. Show matchup before load, allow players to join conditionally on a good grouping of players.<br>
+<br>
+<b>Provide Option to Skip Over Sequences of the Game</b> - After someone pays for a game, if they rage quit (never to play again) because of some section of the game that they don't feel like retrying over and over again, then the developer has failed. It is trivially easy to allow people to skip sections of the game. Support the graphics and art spectator.<br>
+<br>
+<b>Rotate DOF Sample Patterns</b> - Every sample in any DOF gather pattern should not share the same x or y coordinates. This way thin vertical and horizontal features are not missed with sparse sampling patterns.<br>
+<br>
+<b>DOF is NOT Just a Lerp Between an In-Focus and Uniform Large Bokeh Background Image</b> - Circle of confusion changes diameter. Adjust kernel size, point sample to avoid bleeding artifacts.<br>
+<br>
+<b>AA</b> - The morphological tree of AA algorithms (FXAA, etc) are not AA solutions. Anti-aliasing isn't just for edges, super-sampled shading is required. Try something new specifically something with multiple samples/pixel temporally and spatially, and ideally, something which does not align with the display's iron grid of pixels.<br>
+<br>
+<b>Upsample Ringing</b> - If the hardware scalar adds ringing during up-sampling, then it is junk. Either use a shader to up-sample to native resolution (optionally combine with the pass which writes the back buffer), or alternatively have the device output at the lower resolution and have the display scale. Some displays add latency on scaling, so expose this option to the user.<br>
+<br>
+<b>Displays Need App Requested Game-Mode</b> - Default HDTV settings are junk. There should be some protocol for devices attached to get the unmolested display mode (low latency, no extra sharpening filter, etc).<br>
+<br>
+<b>Let the User Choose Res vs FPS</b> - Ideally if the game hits 1080p at 30Hz, then it would also offer the option of lower resolution at 60Hz, and alternatively if the game does 60Hz at lower resolution, then it would support 1080p at 30Hz option to the user.<br>
+
+</div></body></html>
+
+
+
