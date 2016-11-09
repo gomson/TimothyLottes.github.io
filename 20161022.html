@@ -1,0 +1,90 @@
+<html><head><link rel="stylesheet" href="style.css"></head><body><div class="page">
+<h1>20161022 - Variation on Branching Design - Return Only</h1>
+<br>
+
+<i>Thoughts related to <a href="20161016.html">Instruction Fetch Optimization</a>, a post which talked about only auto-incrementing the lower 8-bits of the program counter, having even-only branch addresses to remove an ADDer delay...</i><br>
+<br>
+<b>Return Only ISA</b>
+<br>
+The point here is to be able to know the next program counter, even with a branch, a clock cycle ahead to remove instruction fetch latency from a larger RAM.
+This works with absolute branching (no relative branching).
+The minimal ISA has the following,
+<br>
+<br>
+(1.) Push immediate absolute address on return stack.<br>
+(2.) Push computed absolute address from register on return stack.<br>
+(3.) 1-bit flag in ISA (on all instructions) to return after 1 cycle delay.
+<br>
+<br>
+So the return bit causes the top of the return stack to be registered for fetch.
+Assume an optimization here where a push immediate with a return gets transformed into just setting that registered value.
+Bunch of usage cases,
+<br>
+<br>
+<pre>// RETURN
+opcode, ret; // ... register for future return
+opcode; // ........ branch delay slot
+// ................ actual return
+
+// COMPUTED JUMP
+push reg, ret; // ... push jump address from register and register for future return
+opcode; // .......... branch delay slot
+// .................. actual jump
+
+// JUMP
+push imm, ret; // ... push jump address and register for future return
+opcode; // .......... branch delay slot
+// .................. actual jump
+
+// CAN PUSH ADDRESS EARLIER
+push imm; // ...... push jump address to later branch to
+opcode; // ........ some code
+opcode; // ........ some code
+opcode, ret; // ... register for future return
+opcode; // ........ branch delay slot
+// ................ actual jump
+
+// SERIES OF JUMPS
+push imm; // ........ push addresses for series of branches in reverse order
+push imm; // ........ push addresses for series of branches in reverse order
+push imm, ret; // ... push first jump address and register for future return
+opcode; // .......... branch delay slot
+// .................. start first jump, later rets continue to other jumps
+
+// SERIES OF JUMPS VERSION 2
+push imm; // ........ push 4th jump address
+push imm; // ........ push 3rd jump address
+push imm, ret; // ... push 1st jump address and register for future return
+push imm; // ........ push 2nd jump in branch delay slot
+// .................. start first jump, later rets continue to other jumps
+
+// CALL
+push imm, ret; // ... push call address and register for future return
+push imm; // ........ push return address in delay slot
+// .................. actual call here
+
+// SERIES OF CALLS
+push imm; // ........ push 3nd call address
+push imm; // ........ push 2nd call address
+push imm, ret; // ... push 1st call address and flag for future return
+push imm; // ........ push final call return address in delay slot
+// .................. start first call, later rets continue without returning back in between</pre>
+
+<br>
+No need for call/jump right after logical return (which would have a delay slot), because that can always be factored to a "series" case.
+<br>
+<br>
+Another option would be a co-return bit in addition to the return bit.
+The co-return would swap the top of the return stack with the program counter + 1.
+This would remove the need to push the final return address for a single call,
+but won't help with a series of calls (cannot use the co-return, as need reverse order).
+<br>
+
+ 
+
+
+</div></body></html>
+
+
+
+
