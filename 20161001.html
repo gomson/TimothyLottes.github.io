@@ -1,0 +1,660 @@
+<html><head><link rel="stylesheet" href="style.css"></head><body><div class="page">
+<h1>20161001 - T4K Try 1</h1>
+<br>
+
+Tries : 
+<a href="20161004.html">3</a>
+<a href="20161003.html">2</a>
+<a href="20161001.html">1</a>
+<br>
+<br>
+
+
+<i>This post is just me using blogger an as active notepad to paper design a FPGA soft-core for a many-core machine.
+Hopefully I'll update it once an a while.
+The aim is to try to see what can be built in the budget of one BRAM per core on Xilinx FPGAs,
+thinking through pipelines and physical implementation in CLBs.
+Machine target is 600 32-bit integer cores, at 300 to 500 MHz, with 4KB/core of on-chip local RAM (for instruction and data), 
+with '25-bit * 18-bit + 48-bit' DSP based ALUs, with a Hoplite-based on-chip router for message passing.</i>
+<br>
+<br>
+<b>Update Log</b>
+<br>
+2016/10/02 :
+Returning to the mechanics of code, shift and bit array stuff.
+<br>
+<br>
+
+2016/10/01 :
+Updating ISA, etc.
+Traditionally an instruction encapsulates {source values, operation, destination},
+and the instruction data flows down the CPU pipeline.
+I'm working towards a different kind of ISA,
+where the opcode instead describes what to do in this clock,
+routing between the various data pipelines in the CPU core.
+This could be a horrible idea (racing to fail), it certainly is for assembly readability!
+Effectively I'm attempting to be able to describe {branch, alu, mov, mem} access all in a single 32-bit opcode.
+Attempt to push an IPC closer to 3 or 4, instead of around 1.
+<br>
+<br>
+2016/10/01 :
+Beginning.
+Yanked the prior post because my implementation estimation was fail, the revised version appears here.
+<br>
+<br>
+
+<b>Notes</b>
+<pre>==============
+
+  FPGA NOTES
+
+==============
+
+===============
+  CORE BUDGET
+===============
+  1 BRAM (32-bit x 1024 entry, with 2 ports both which can read or write)
+  2 DSPs 
+400 LUTs (50 slices, 8 LUTs per slice)
+
+
+==============
+  LUTs / MUX
+==============
+1 LUT =  2:1 MUX x2 (get two of these)
+1 LUT =  4:1 MUX
+2 LUT =  8:1 MUX
+4 LUT = 16:1 MUX
+8 LUT = 32:1 MUX
+
+
+===================================
+  LUTs / GENERAL PURPOSE FUNCTION
+===================================
+1 LUT =  5:1 x2 (get two of these sharing same 5 input bits)
+1 LUT =  6:1
+2 LUT = 13:1
+4 LUT = 27:1 
+
+
+===============
+  SLICE RULES
+===============
+Carry chain for slice can start at LUT 0 or LUT 4
+Distributed RAM granularity is half a slice (starting at LUT 0 or LUT 4)
+
+
+========================
+  DSP PATTERN DETECTOR
+========================
+From docs, "use of the pattern detector leads to a moderate speed reduction 
+  due to the extra logic on the pattern detect path"
+Suggests not using this to check for zero
+  So branch on signed or unsigned only?
+Wouldn't be able to use this for both saturation checks and zero check anyway
+
+
+====================
+
+  FUNCTIONAL UNITS
+
+====================
+
+============================
+  CURRENT LUT BUDGET USAGE
+============================
+LUTs  %    Usage
+====  ===  =====
+28    7    Program counter
+12    3    Return stack
+107   27   BRAM variable bit-width windows (includes adr^imm)
+64    16   Register file
+----  ---  -----
+211   53   Total
+
+
+===================
+  PROGRAM COUNTER
+===================
+10-bit program counter (PC)
+Only lower 8-bits of PC increment on linear execution
+  Requires only an 8-bit PC+1 computation (one slice)
+
+Aim to minimize critical path getting next address to BRAM
+  Only one level of LUT to compute next address
+  All inputs registered at end of prior clock
+  Followed by 8-bit add to compute possible PC for next clock
+
+PC function inputs per output bit (map to 13:1 function at 2 LUTs/bit)
+  Bits  Meaning
+  ====  =======
+  1     Next PC if not branching (computed in prior clock)
+  1     Top of return stack
+  1     Immediate absolute branch address
+  1     PSP P output register (computed branch target in prior clock)
+  1     PSP P output register sign bit (for conditional branch)
+  8     Up to 8 bits from instruction opcode to decode
+  
+LUTs  Usage
+====  =====
+20    13:1 function for next 10-bit PC computation including instruction decode
+8     PC+1 adder for 8 lower bits of PC
+----  -----
+28    Total (7% of 400 LUT/BRAM budget)
+
+
+================
+  RETURN STACK
+================
+Going to plan on a dedicated return stack for now
+Only need single port for return stack (either call/push, or return/pop)
+Hardware background,
+  Distributed RAM works in 4 LUT granularity
+  1 LUT provides 2x SPRAM32 (single port 32x1 RAM)
+  Writes are synchronous on clock edge
+  Reads are async
+  8 LUTs for a 32 x 16-bit return stack data
+
+Not using everything
+  Padding to 4 LUT granularity
+  Only need 10-bits out of 16-bits (6-bits free for other state)
+  Likely going to keep only 4-bit top of stack address register
+    Could use other 16 entries for run function on new message?
+
+Todo
+  Control inputs, adder input, etc
+
+LUTs  Usage
+====  =====
+8     32 entry x 16-bit return stack
+4     4-bit top of stack pointer
+?     
+----  -----
+12    Total (3% of 400 LUT/BRAM budget)
+
+
+=================================================
+  ADDRESS REGISTER XOR INSTEAD OF ADD IMMEDIATE
+=================================================
+Planning on [address ^ immediate] addressing
+  This removes an adder from the design
+
+XOR is the same as [address + immediate] for an n-bit immediate
+  When lower n-bits of address are zero
+  Means data must be aligned to the nearest pow2 of maximum immediate offset
+
+Using the following terms,
+  ggggggoooo
+    g =  group bits (address bits choose the group of data)
+    o = offset bits (address bits are zero, immediate chooses element in group)
+
+For bits in address which are not cleared (ie the group bits),
+  Setting bits in the immediate results in accessing a neighbor group
+  Regardless of the starting group in the address register
+    It is possible to roll through all aligned groups
+    But ordering is different based on starting group address
+    Example of group bits for address crossed with immediate
+           00 01 10 11   
+         +-------------
+      00 | 00 01 10 11
+      01 | 01 00 11 10
+      10 | 10 11 00 01
+      11 | 11 10 01 00
+
+
+===================================
+  BRAM VARIABLE BIT-WIDTH WINDOWS
+===================================
+Trying to support transparent pack/unpack of variable bit-widths from BRAM
+  Want zero impact to ISA, no special instructions
+  Instead dividing address range into windows of different bit-widths
+  Each address range addresses at a multiple of the bit-width
+  Effectively the high bits of address choose the bit-width
+
+Store path limited to {8,16,32}-bit
+  Only using BRAM byte write mask to avoid any {read, modify, write}
+
+Fixed signed vs unsigned configuration
+  32-bit doesn't matter
+  16-bit going to go with signed (needed for vector or audio)
+   8-bit unsigned (not so sure about that)
+   4-bit unsigned for sure (sprites?)
+
+BRAMs always in 32-bit port mode,
+  fedcba9876543210 
+  ================
+  .xxxxxxxxxx00000 - requires 10-bit address
+
+Address register,
+  fedcba9876543210 
+  ================
+  00....xxxxxxxxxx - 1024 x 32-bit
+  01...xxxxxxxxxxx - 2048 x 16-bit 
+  10..xxxxxxxxxxxx - 4096 x  8-bit 
+  11.xxxxxxxxxxxxx - 8192 x  4-bit (supported for read only)
+
+Address register value to BRAM address translation
+  This needs to include XORing the immediate
+  Uses a 13:1 function for each bit,
+    Bits  Meaning
+    ====  =======
+    4     Address shifted left {0,1,2,3} bits
+    4     Immediate shifted left {0,1,2,3} bits
+    2     The 'fe' address bits
+    3     Up to 3 bits from instruction opcode to decode
+          Should select if use immediate, etc
+
+Permutations (showing address and byte write mask for store),
+  11111111111111110000000000000000
+  fedcba9876543210fedcba9876543210
+  ================================
+  aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa - 32-bit adr=00....xxxxxxxxxx  write=1111
+  ................bbbbbbbbbbbbbbbb - 16-bit adr=01...xxxxxxxxxx0  write=0011
+  cccccccccccccccc................ - 16-bit adr=01...xxxxxxxxxx1  write=1100
+  ........................dddddddd -  8-bit adr=10..xxxxxxxxxx00  write=0001
+  ................eeeeeeee........ -  8-bit adr=10..xxxxxxxxxx01  write=0010
+  ........ffffffff................ -  8-bit adr=10..xxxxxxxxxx10  write=0100
+  gggggggg........................ -  8-bit adr=10..xxxxxxxxxx11  write=1000
+  ............................hhhh -  4-bit adr=11.xxxxxxxxxx000
+  ........................iiii.... -  4-bit adr=11.xxxxxxxxxx001
+  ....................jjjj........ -  4-bit adr=11.xxxxxxxxxx010
+  ................kkkk............ -  4-bit adr=11.xxxxxxxxxx011
+  ............llll................ -  4-bit adr=11.xxxxxxxxxx100
+  ........mmmm.................... -  4-bit adr=11.xxxxxxxxxx101
+  ....nnnn........................ -  4-bit adr=11.xxxxxxxxxx110
+  oooo............................ -  4-bit adr=11.xxxxxxxxxx111
+
+Shift value for store,
+  Requires 3:1 MUX per bit, 32 LUTs
+
+Generate write enable for store,
+  Requires same 4-bits per function,
+    2 lower address bits
+    2 upper address bits
+  2 LUTs (5:1 function sharing inputs, 2 outputs per LUT)
+
+Unpack after load,
+  11111111111111110000000000000000
+  fedcba9876543210fedcba9876543210
+  ================================
+  aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+  <---------------bbbbbbbbbbbbbbbb - sign extended
+  <---------------cccccccccccccccc - sign extended
+  000000000000000000000000dddddddd
+  000000000000000000000000eeeeeeee
+  000000000000000000000000ffffffff
+  000000000000000000000000gggggggg
+  0000000000000000000000000000hhhh
+  0000000000000000000000000000iiii
+  0000000000000000000000000000jjjj
+  0000000000000000000000000000kkkk
+  0000000000000000000000000000llll
+  0000000000000000000000000000mmmm
+  0000000000000000000000000000nnnn
+  0000000000000000000000000000oooo
+  ================================
+  xxxxxxxxxxxxxxxx................ -  4:1 MUX/bit (a bit, top b bit, top c bit, 0)                                   
+  ................xxxxxxxx........ -  4:1 MUX/bit ({a,b,c} bit, 0)
+  ........................xxxx.... -  8:1 MUX/bit ({a,b,...g} bit, 0) 
+  ............................xxxx - 15:1 MUX/bit ({a,b,...o} bit) 
+
+Unpack if done with MUX control logic computed in prior clock,
+  This registers 4-bits extra, to reduce LUT cost on MUX
+  Register 2-bits for top 24-bit MUX control
+    Logic function (3:1 sharing inputs), one LUT 
+      up lo    1 0
+      == ===   = =
+      00 xxx | 0 0
+      01 xx0 | 0 1
+      01 xx1 | 1 0
+      10 xxx | 1 1
+      11 xxx | 1 1    
+  Register 3-bits for 2nd lowest 4-bit MUX control
+    Logic function (4:1 sharing inputs), rounds to 2 LUTs 
+      up lo    2 1 0
+      == ==    = = =
+      00 xxx | 0 0 0
+      01 xx0 | 0 0 1
+      01 xx1 | 0 1 0
+      10 x00 | 0 1 1
+      10 x01 | 1 0 0
+      10 x10 | 1 0 1
+      10 x11 | 1 1 0
+      11 xxx | 1 1 1  
+  Register 4-bits for lower 4-bit MUX control
+    Logic function (5:1 sharing inputs), 2 LUTs 
+      Skipping as pattern is obvious ...
+
+LUTs  Usage
+====  =====
+20    Address register value to BRAM address translation 2 LUTs x 10-bits
+32    Shift value for store
+2     Generate write enable
+5     Unpack MUX control logic (done on clock computing address for BRAM)
+24    Unpack MUX for 24-bits
+8     Unpack MUX for 4-bits (higher nibble)
+16    Unpack MUX for 4-bits (lower nibble) 
+----  -----
+107   Total (27% of 400 LUT/BRAM budget)
+
+
+=================
+  REGISTER FILE
+=================
+Using the smallest possible, but assuming the need for 1 write and 3 read ports,
+  8 LUTs (one SLICEM) yields one Quad-port 32 entry x 4-bit RAM
+
+Register file write sources,
+  DSP P output register
+  BRAM load
+  What else?
+  TODO?
+    Need to fold these choices into BRAM unpack logic?
+    Or is BRAM load also forwarded into DSP inputs without first going to reg file?
+
+Register file read sources,
+  Address register
+  DSP A,B,C inputs
+  What else?   
+
+LUTs  Usage
+====  =====
+64    Total (16% of 400 LUT/BRAM budget)
+
+
+=======
+  DSP
+=======
+Not attempting to use all features of DSP
+  Pre-add 'a+d' tossed because of extra pipeline stage
+
+DSP is effectively modal,
+  If multiply is enabled then there are only 2 options,
+    'p = c+(a*b)'
+    'p = c-(a*b)' <- is multiply subtract worth it? (assuming yes for now)
+  Otherwise,
+    'p = c OP (a:b)
+
+
+===================
+  MESSAGE PASSING  
+===================
+Todo
+
+
+=================================
+  
+  ISA / CODE GENERATION DETAILS
+
+=================================
+Todo
+
+=======
+  ISA 
+=======
+Going to get messy for now.
+Attempting first to describe everything which needs instruction control.
+This will overflow a 32-bit instruction.
+In process culling options which are less needed.
+In hope of eventually fitting everything.
+
+Source input data which can be accessed each clock,
+  Register file loads (from prior clock),
+    32-bit x
+    32-bit y
+    32-bit z
+  Instruction immediate for this instruction,
+    10-bit i
+  BRAM last unpacked fetch (from prior clock),
+    32-bit f
+  DSP output (from prior clock),
+    32|48-bit p
+
+Sink output data,
+  DSP inputs,
+    18-bit b
+    24-bit a (could be up to 30-bit, but no LUTs for that)
+    32-bit c (could be up to 48-bit, but no LUTs for that)
+     ?-bit control bits (todo)
+  BRAM output word
+    32-bit o
+  BRAM memory address before translation
+    16-bit m
+  BRAM access control bits
+  Register file entries for each port
+     5-bit immediate s (store port)
+     5-bit immediate t 
+     5-bit immediate u
+     5-bit immediate v
+  Register file write value
+    32-bit w
+
+Alphabet usage,
+  abcdefghijklmnopqrstuvwxyz
+  ==========================
+  abc.......................  DSP inputs
+  ...............p..........  DSP output
+  ........i.................  immediate
+  ............m.............  BRAM memory address
+  .....f....................  BRAM fetched value
+  ..............o...........  BRAM output word
+  ..................s.......  Register file store port
+  ...................tuv....  Register file read ports
+  ......................w...  Register file write value
+  .......................xyz  Register file reads
+
+Tracking how much opcode overload,
+  11111111111111110000000000000000
+  fedcba9876543210fedcba9876543210
+  ================================
+  bbb.............................  Branching 
+  ...rr...........................  BRAM operation 
+  .....sssstttuuuuvvvv............  Reg file ports
+  ....................??..........  Not enough space for DSP control
+  ......................iiiiiiiiii  Trying for fixed 10-bit immediate 
+  ================================
+  Notes,
+    Definitely need smarter opcode encoding
+
+Immediate,
+  11111111111111110000000000000000
+  fedcba9876543210fedcba9876543210
+  ================================
+  ......................iiiiiiiiii  Trying for fixed 10-bit immediate 
+  ================================
+  Notes,
+    Wanted 10-bit to hit full BRAM absolute address
+
+DSP control,
+  11111111111111110000000000000000
+  fedcba9876543210fedcba9876543210
+  ================================
+  Notes,
+    Lots of control bits to get correct in here      
+
+DSP inputs,
+  11111111111111110000000000000000
+  fedcba9876543210fedcba9876543210
+  ================================
+  ................................  Input a 24-bits
+  ................................    a=signExtend(i)
+  ................................    a=y[32:18]
+  ................................    a=f[32:18]
+  ................................    a=f
+  ................................    a=y
+  ................................    a=z
+  ================================
+  ................................  Input b 18-bits
+  ...............................0    b=i
+  ..............................??    b=y
+  ..............................??    b=f 
+  ================================
+  ................................  Input c 32-bits
+  ...............................?    c=f
+  ...............................?    c=z
+  ================================
+  Notes,
+    Might be able to have a be modal based on DSP control (for mul vs a:b cases)
+      Or maybe merge for some cases?
+    The a=signExtend(i) case is needed for signed (a:b)=i
+    Should c=z be z or something else
+    Believe f probably should be an input into b for '(a:b) op c' case
+    Culled, a=i, as i is too small for top bits of a:b, and mul is associative
+    Culled, b=p, as it is better to just forward in these cases
+    Culled, c=p, hoping forwarding if control bits covers this
+
+Branch control,
+  11111111111111110000000000000000
+  fedcba9876543210fedcba9876543210
+  ================================
+  .............................???  No branch
+  .............................???  Return
+  .............................???  Call to p
+  .............................???  Switch to/from MessageHandler/Program
+  .............................???  Conditional jump if p<0
+  .............................???  Conditional jump if p>=0
+  .............................???  Call
+  .............................???  Jump
+  ================================
+  Notes,
+    Likely not getting branch control under 3-bits
+      At least without multiple instruction forms
+    In theory this enables "free" branching
+    Won't have p==0, as don't want to turn on pattern detector
+    Work through computed branch targets cases again ...
+    
+Register file ports,
+  11111111111111110000000000000000
+  fedcba9876543210fedcba9876543210
+  ================================
+  .................ssss...........  Store to any register
+  .....................ttt........  BRAM address registers (limited to first 8 for space)
+  ........................uuuuvvvv  Load from any register
+  ================================
+  Notes,
+    This is the most trouble in opcode encoding size
+    Dropping to 16 entries from 32
+      Assuming want freer context switch to handle message
+        First 16 used during normal execution
+        Later 16 used during handle message
+
+BRAM operation bits,
+  11111111111111110000000000000000
+  fedcba9876543210fedcba9876543210
+  ================================
+  ..............................00  f=[x]
+  ..............................01  f=[x^i]
+  ..............................10  [x]=p
+  ..............................11  [x^i]=p
+  ================================
+  Notes,
+    This is all that is needed to keep the one BRAM port busy
+    Direct mapping to register port t (1st read port) to save size
+    Only supporting storing from DSP output p
+      If one is going to store, store when generated
+      If need to store later just load back into the DSP (nop)
+    Need separate [x] case because imm may be used for something else
+    Culled, nop (just going to burn power for load regardless if needed)
+    Culled, f=[i], [i]=p, because [x^i] can load x=0
+
+
+===================
+  SHIFTING ISSUES
+===================
+Needs more thought ...
+
+Have the following pipeline options built in the DSP
+ (25-bit a * 18-bit b) + 48-bit c
+ ((25-bit a * 18-bit b) + 48-bit c) << 17
+
+Usage cases,
+  Address math,
+    This is 'base + index * stride', so use 'a*b+c'
+    Index limited to 16 M
+    Base not limited
+  Bitfield,
+    Included in via variable-bit BRAM access
+  Bit arrays,
+    Expanded to later section
+  Divides
+    Needs some thought ...
+
+Shifter will do at most 24-bit integers,
+  Top bits get sign-extended (likely not the opcode space for unsigned)
+  Using 24 to keep with quad LUT alignment
+
+Shifts for 16-bit,
+  __for_shift_>>__ __for_shift_<<__
+  1111111111111111 0000000000000000
+  fedcba9876543210 fedcba9876543210  mul       <<  >>
+  ================ ================  ========  ==  ==    
+  ................ fedcba9876543210  00000001   0  10   
+  ...............f edcba9876543210.  00000002   1   f
+  ..............fe dcba9876543210..  00000004   2   e
+  .............fed cba9876543210...  00000008   3   d
+  ............fedc ba9876543210....  00000010   4   c
+  ...........fedcb a9876543210.....  00000020   5   b
+  ..........fedcba 9876543210......  00000040   6   a
+  .........fedcba9 876543210.......  00000080   7   9
+  ........fedcba98 76543210........  00000100   8   8
+  .......fedcba987 6543210.........  00000200   9   7
+  ......fedcba9876 543210..........  00000400   a   6
+  .....fedcba98765 43210...........  00000800   b   5
+  ....fedcba987654 3210............  00001000   c   4
+  ...fedcba9876543 210.............  00002000   d   3
+  ..fedcba98765432 10..............  00004000   e   2
+  .fedcba987654321 0...............  00008000   f   1
+  fedcba9876543210 ................  00010000  10   0
+
+
+==============
+  BIT ARRAYS
+==============
+Maybe best to just use the 8-bit BRAM window
+  Keeps with-in the range of immediate for AND mask
+
+Emulation without special hardware,
+  Algorithms,
+    Extract lowest bit set ....................  x & -x
+    Get mask up to lowest bit set .............  x ^ (x - 1)
+    Reset lowest bit set ......................  x & (x - 1)
+    ===========================================  ============
+    Fill from lowest clear bit ................  x & (x + 1)
+    Isolate lowest clear bit and complement ...  ~x & (x + 1)
+    Mask from lowest clear bit ................  x ^ (x + 1)
+    Mask from trailing zeros ..................  ~x & (x - 1)
+    ===========================================  ============
+    Isolate lowest clear bit ..................  x | ~(x + 1)
+    Set lowest clear bit ......................  x | (x + 1)
+    Fill from lowest set bit ..................  x | (x - 1)
+    Isolate lowest set bit and complement .....  ~x | (x - 1)
+    Inverse mask from trailing ones ...........  ~x | (x + 1)
+
+Common algorithms,
+  Bit insert
+  Bit extract
+  Popuplation count
+    Output is 3 bits
+    Requires 8:1 function, or 2 LUTs/bit, 6 LUTs in hardware
+  Count leading zeros
+    6 LUTs in hardware
+  Count trailing zeros
+    6 LUTs in hardware
+
+Todo,
+  Look through De Bruijn Sequence based stuff again
+          
+</pre>
+<br>
+<b>Related Material</b>
+<br>
+<a href="https://graphics.stanford.edu/~seander/bithacks.html">Bit Hacks</a><br>
+<a href="https://en.wikipedia.org/wiki/Bit_Manipulation_Instruction_Sets">Bit Manipulation Instruction Sets</a><br>
+<a href="http://ece.gmu.edu/coursewebpages/ECE/ECE645/S11/projects/project_1_resources/Adders_MELECON_2010.pdf">A Fast Carry Chain Adder for Virtex-5 FPGAs</a><br>
+<a href="http://fpga.org/wp-content/uploads/2016/05/grvi_phalanx_fccm2016.pdf">GRVI Phalanx: A Massively Parallel RISC-V FPGA Accelerator Accelerator</a><br>
+<a href="http://www.eecg.toronto.edu/~jayar/pubs/luu/luufccm14.pdf">On Hard Adders and Carry Chains in FPGAs</a><br>
+<a href="http://que.no/index.php/2016/03/13/principles-of-fpga-ip-interconnect/">Principles of FPGA IP Interconnect</a><br>
+</div></body></html>
+
+
+

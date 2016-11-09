@@ -1,0 +1,535 @@
+<html><head><link rel="stylesheet" href="style.css"></head><body><div class="page">
+<h1>20161003 - T4K Try 2</h1>
+<br>
+
+Tries : 
+<a href="20161004.html">3</a>
+<a href="20161003.html">2</a>
+<a href="20161001.html">1</a>
+<br>
+<br>
+
+<b>Update Log</b>
+<br>
+2016/10/03 : 
+Initial posting. Most of pipelining figured out.
+Working through DSP input and operation details.
+Have to think through data and return stack usage cases,
+decide if data register file should just be removed and replaced with indexed fetched from data stack.
+<br>
+<br>
+2016/10/02 :
+Trying a different design path.
+Concerned that the core which enables easy factored code, and thus well compressed code in limited memory,
+is not having to optimize around a CPU pipeline from the perspective of a thread of execution.
+So in this try, I'm working through paper implementation of a core which round-robins through 4 threads for a 4 stage pipeline
+(talked about in <a href="20160705.html">this prior post</a>).
+Maintaining variable bit-width address windows, and other things from prior post.
+<br>
+<br>
+<b>Notes</b><pre>
+================
+  FORTH HYBRID
+================
+Dual stack machine with register file
+Core functional units,
+
+  16-bit x 8-entry return stack (1 port) 
+  32-bit x 8-entry data stack (1 port)
+  32-bit x 8-entry register file (2 ports, port 0 for DSP input, port 1 for BRAM address)
+  32-bit x 1024-entry BRAM (2 ports, port 0 for instruction fetch, port 1 for data)
+
+
+===================
+  EXECUTION MODEL
+===================
+4 threads/core of execution running with guaranteed round-robin scheduling
+Instructions are VLIW style with a fixed logical ordered set of operations
+
+  Order  Operation
+  =====  =========
+  1st    mux inputs for DSP ............ uses loads from prior instruction
+  2nd    DSP execution .................
+  3nd    load/store to REG and BRAM .... can store DSP result
+  4th    branch ........................ can branch to DSP result
+
+
+=====================
+  PHYSICAL PIPELINE
+=====================
+Designing under the following constraints,
+
+  Loads from RAMs are not used until next stage
+  Each stage does only one LUT or ADD both of which can be vertically chained 
+  DSP is fully pipelined
+
+Outline,
+
+         DSP  DSP  DSP  DSP  DSP  DAT  ADR  BLK  BLK
+  Stage  A B  MUL  C    ADD  P    REG  REG  OUT  RAM  PC   INS
+  =====  ===  ===  ===  ===  ===  ===  ===  ===  ===  ===  ===
+      0  lut       lut                 @
+      1       mul  reg                 lut
+      2                 add            lut            add
+      3                      lut  @!        lut  @!   lut  @
+  -----  ---  ---  ---  ---  ---  ---  ---  ---  ---  ---  ---
+
+  DSP A B .... DSP input a and b arguments
+  DSP MUL .... DSP mul stage
+  DSP C ...... DSP input c argument
+  DSP ADD .... DSP add/op stage
+  DAT REG .... Register file data load/store
+  ADR REG .... Register file address register to BRAM address translation
+  BLK OUT .... BRAM data construct write value
+  BLK RAM .... BRAM data load/store
+  PC ......... Update program counter
+  INS ........ Fetch next instruction
+
+
+============================
+  CURRENT LUT BUDGET USAGE
+============================
+Budget is 400 LUTs/core, adding as design is roughed out,
+
+  LUTs  %    usage
+  ====  ===  =====
+    32    8  register file (4x 8-LUT SLICEM 32-entry x  8-bit 2 port RAM)
+    16    4  data stack    (2x 8-LUT SLICEM 32-entry x 16-bit 1 port RAM)
+     8    2  return stack  (   8-LUT SLICEM 32-entry x 16-bit 1 port RAM)
+  ----  ---  -----
+    54       DSP b input
+             DSP a input
+             DSP c input
+    18    5  BRAM address generation
+    34       BRAM output generation
+    38   10  program counter
+  ====  ===  =====
+   200       total
+
+
+========
+  TODO
+========
+Make sure to register all inputs required to generate a b and c
+
+
+===========================
+  DSP B INPUT
+===========================
+Need to also unpack BRAM load options so this gets expensive
+Placement in pipeline,
+
+  stage  action
+  =====  ======
+      0  LUT DSP b input
+      1  
+      2  register pre-translated address for stage 0 of next cycle
+      3  register pre-translated address for stage 0 of next cycle
+
+The b input expanded with unpack options, and control bits,
+
+  fedcba9876543210  n  LUT input count
+  ================  =  ===============
+  <-----iiiiiiiiii  i   1-bit
+  tttttttttttttttt  t   1-bit
+  dddddddddddddddd  d   1-bit
+  ================
+  aaaaaaaaaaaaaaaa  f   4-bits for MSB 8-bits of output
+  bbbbbbbbbbbbbbbb      7-bits for 2nd LSB 4-bits of output
+  cccccccccccccccc     15-bits for LSB 4-bits of output
+  00000000dddddddd
+  00000000eeeeeeee
+  00000000ffffffff
+  00000000gggggggg
+  000000000000hhhh
+  000000000000iiii
+  000000000000jjjj
+  000000000000kkkk
+  000000000000llll
+  000000000000mmmm
+  000000000000nnnn
+  000000000000oooo
+  ================
+  xxxxxxxxxxxxxxxx  needs 2-bit opcode control
+  xxxxxxxxxxxxxxxx  needs 2-bit MSB of pre-translate address
+  xxxxxxxx........  needs 1-bit LSB of pre-translate address
+  ........xxxx....  needs 2-bit LSB of pre-translate address
+  ............xxxx  needs 3-bit LSB of pre-translate address
+  ================
+  xxxxxxxx........  12:1 function (2 LUT/bit) x 8-bit = 16 LUT
+  ........xxxx....  16:1 function (4 LUT/bit) x 4-bit = 16 LUT
+  ............xxxx  25:1 function (4 LUT/bit) x 4-bit = 16 LUT
+                                                       
+LUT area estimate,
+
+  LUTs  usage
+  ====  =====
+    48  generate b
+     6  to register 5-bits x 2 stages of pre-translate address (rounded up)
+  ----  -----
+    54  total
+                                                       
+
+===========================
+  DSP A INPUT
+===========================
+Placement in pipeline,
+
+  stage  action
+  =====  ======
+      0  LUT DSP a input
+      1  
+      2
+      3
+
+LUT area estimate,
+
+  LUTs  usage
+  ====  =====
+  ----  -----
+        total
+
+
+===========================
+  DSP C INPUT
+===========================
+Placement in pipeline,
+
+  stage  action
+  =====  ======
+      0  LUT DSP c input
+      1  register c
+      2
+      3
+
+LUT area estimate,
+
+  LUTs  usage
+  ====  =====
+  ----  -----
+        total
+
+
+===========================
+  BRAM ADDRESS GENERATION
+===========================
+Supports the feature of variable-bit width windows into the 4KB of ram
+Placement in pipeline,
+
+  stage  action
+  =====  ======
+      0  fetch base address from register file 
+      1  optionally XOR immediate
+      2  translate into BRAM address
+      3
+
+Implementation requires XOR control to be single bit in opcode
+
+BRAMs always in 32-bit port mode,
+
+  fedcba9876543210 
+  ================
+  .xxxxxxxxxx00000 - requires 10-bit address
+
+Address register,
+
+  fedcba9876543210  access
+  ================  ======
+  00....xxxxxxxxxx  1024 x 32-bit
+  01...xxxxxxxxxxx  2048 x 16-bit 
+  10..xxxxxxxxxxxx  4096 x  8-bit 
+  11.xxxxxxxxxxxxx  8192 x  4-bit (supported for read only)
+
+Address register value to BRAM address translation
+  Uses a 6:1 function for each bit,
+
+    bits  meaning
+    ====  =======
+       4  address shifted left {0,1,2,3} bits
+       2  the 'fe' address bits
+
+LUT area estimate,
+
+  LUTs  usage
+  ====  =====
+     8  optional XOR (16-bits at 2-bits per LUT), rounding up for ending register
+    10  translate (10-bits x 1 LUT)
+  ----  -----
+    18  total
+
+
+===========================
+  BRAM OUTPUT GENERATION
+===========================
+Shifts DSP p output for store, and compute byte write mask
+Placement in pipeline,
+
+  stage  action
+  =====  ======
+      0  
+      1  
+      2  
+      3  LUT new output here
+
+Permutations (showing address and byte write mask for store),
+
+  11111111111111110000000000000000
+  fedcba9876543210fedcba9876543210
+  ================================
+  aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa - 32-bit adr=00....xxxxxxxxxx  write=1111
+  ................bbbbbbbbbbbbbbbb - 16-bit adr=01...xxxxxxxxxx0  write=0011
+  cccccccccccccccc................ - 16-bit adr=01...xxxxxxxxxx1  write=1100
+  ........................dddddddd -  8-bit adr=10..xxxxxxxxxx00  write=0001
+  ................eeeeeeee........ -  8-bit adr=10..xxxxxxxxxx01  write=0010
+  ........ffffffff................ -  8-bit adr=10..xxxxxxxxxx10  write=0100
+  gggggggg........................ -  8-bit adr=10..xxxxxxxxxx11  write=1000
+  ............................hhhh -  4-bit adr=11.xxxxxxxxxx000
+  ........................iiii.... -  4-bit adr=11.xxxxxxxxxx001
+  ....................jjjj........ -  4-bit adr=11.xxxxxxxxxx010
+  ................kkkk............ -  4-bit adr=11.xxxxxxxxxx011
+  ............llll................ -  4-bit adr=11.xxxxxxxxxx100
+  ........mmmm.................... -  4-bit adr=11.xxxxxxxxxx101
+  ....nnnn........................ -  4-bit adr=11.xxxxxxxxxx110
+  oooo............................ -  4-bit adr=11.xxxxxxxxxx111
+
+Shift value for store,
+  Requires 3:1 MUX per bit, 32 LUTs
+
+Generate write enable for store,
+  Requires same 4-bits per function,
+    2 lower address bits
+    2 upper address bits
+  2 LUTs (5:1 function sharing inputs, 2 outputs per LUT)
+
+LUT area estimate,
+
+  LUTs  usage
+  ====  =====
+    32  shift value for store
+     2  generate write enable
+  ----  -----
+    34  total
+
+
+===================
+  PROGRAM COUNTER
+===================
+10-bit program counter (PC)
+Only lower 8-bits of PC increment on linear execution
+  Requires only an 8-bit PC+1 computation (one slice)
+
+Placement in pipeline,
+
+  stage  action
+  =====  ======
+      0  register
+      1  register
+      2  increment PC
+      3  LUT new PC based on DSP p output and instruction opcode
+
+PC function inputs per output bit (map to 13:1 function at 2 LUTs/bit),
+
+  bits  meaning
+  ====  =======
+     1  next PC if not branching (computed in prior stage)
+     1  top of return stack
+     1  immediate absolute branch address
+     1  DSP P output register (computed branch target in prior clock)
+     1  DSP P output register sign bit (for conditional branch)
+     3  bits from instruction opcode
+
+LUT area estimate,
+
+  LUTs  usage
+  ====  =====
+    20  13:1 function for next 10-bit PC computation including instruction decode
+     8  PC+1 adder for 8 lower bits of PC
+    10  for 2 stage registers (2-bits/LUT)
+  ----  -----
+    38  total
+
+
+========================
+  INSTRUCTION PIPELINE
+========================
+Todo, remember to count cost to pipeline opcode bits through stages
+
+
+
+=========
+
+  NOTES
+
+=========
+
+=================================================
+  ADDRESS REGISTER XOR INSTEAD OF ADD IMMEDIATE
+=================================================
+Planning on [address ^ immediate] addressing
+  This removes an adder from the design
+
+XOR is the same as [address + immediate] for an n-bit immediate
+  When lower n-bits of address are zero
+  Means data must be aligned to the nearest pow2 of maximum immediate offset
+
+Using the following terms,
+  ggggggoooo
+    g =  group bits (address bits choose the group of data)
+    o = offset bits (address bits are zero, immediate chooses element in group)
+
+For bits in address which are not cleared (ie the group bits),
+  Setting bits in the immediate results in accessing a neighbor group
+  Regardless of the starting group in the address register
+    It is possible to roll through all aligned groups
+    But ordering is different based on starting group address
+    Example of group bits for address crossed with immediate
+
+           00 01 10 11   
+         +-------------
+      00 | 00 01 10 11
+      01 | 01 00 11 10
+      10 | 10 11 00 01
+      11 | 11 10 01 00
+
+
+===================================
+  BRAM VARIABLE BIT-WIDTH WINDOWS
+===================================
+Trying to support transparent pack/unpack of variable bit-widths from BRAM
+  Want zero impact to ISA, no special instructions
+  Instead dividing address range into windows of different bit-widths
+  Each address range addresses at a multiple of the bit-width
+  Effectively the high bits of address choose the bit-width
+
+Store path limited to {8,16,32}-bit
+  Only using BRAM byte write mask to avoid any {read, modify, write}
+
+Fixed signed vs unsigned configuration,
+
+  size    choice
+  ======  ======
+  32-bit  signed (but doesn't matter)
+  16-bit  going to go with signed (needed for vector or audio)
+   8-bit  unsigned (keeps implementation simple)
+   4-bit  unsigned for sure (sprites?)
+
+
+==========================================
+  WORKING THROUGH OPTIONS DSP OPERATIONS
+==========================================
+Opcode forms,
+
+  p = c op ((a << 16) + unsigned(b))
+  p = c + (a * b)  
+  p = c - (a * b)
+
+Where op can be the following,
+
+  and .....
+  nand ....
+  nor .....
+  not .....
+  or ......
+  xnor ....
+  xor .....
+
+Where the following can also be applied,
+
+  extra set c bit -1 to 1 (for rounding)
+  (a * b) can be forced to zero (nop)
+  ((a << 16) + unsigned(b)) can be forced to zero (nop) 
+  ((a << 16) + unsigned(b)) can be forced to all ones 
+
+
+===============================================
+  WORKING THROUGH OPTIONS FOR A,B,C DSP INPUT
+===============================================
+DSP inputs (as they appear in the core),
+  
+  24-bit a
+  16-bit b
+  40-bit c
+
+Possible inputs,
+  
+  10-bit immediate 
+  16-bit top of return stack
+  32-bit top of data stack
+  32-bit register file load (from prior instruction)
+  32-bit BRAM load (from prior instruction)
+  40-bit DSP p output
+  
+
+====================
+  FAST ABS MIN MAX
+====================
+Simple design exercise to think through DSP issues
+
+These need to work on the 40-bit accumulator without precision loss
+  So using multiply stage is out
+
+Min and max, where a is the accumulator, and b is the limit,
+
+  min(a, b) = ((a - b) & ((a - b) < 0 ? ~0 : 0)) + b
+  max(a, b) = ((a - b) & ((a - b) < 0 ? 0 : ~0)) + b
+
+Want to be able do the following,
+
+  acc -= b; 
+  acc = acc < 0 ? acc : 0; // want to fold this into prior operation
+  acc += b;
+  
+Have to either LUT or register p in stage 3,
+  Could LUT p to zero if signed or unsigned based on control bit
+  This works out to 2-bits/LUT (pair of 5:1 functions with same input)
+  So 20 LUTs total (same as just registering)
+    Plus likely need to decode control and enable from opcode in prior pass
+
+  inputs
+  ------
+  2 p bits
+  1 p sign bit (might want the overflow sign bit?)
+  1 enable bit
+  1 signed or unsigned control bit
+
+This enables min and max to work in 2 instructions without branching
+
+Absolute value,
+
+  abs(a) = max(a, -a)
+
+Does this make the case for,
+
+  expanding data stack to 40-bit (to match accumulator)?
+  reducing accumulator to 36-bit, or even 32-bit?
+
+Operation,
+
+  push copy of acc; // want to fold into start of next op
+  acc += acc; acc = acc < 0 ? 0 : acc; 
+  acc -= pop;
+
+Using top of data stack for DSP input means it must be pre-registered
+  That register could be 40-bit until it gets actually stored on stack
+  Want a bit which marks if should consume data stack
+
+Ideally push to happen before the first add (included in that opcode)
+  Stage 0 : must save top to stack RAM
+  Stage 1 : set top to p
+    Todo, think through when c is computed again
+
+Data stack top is going to be expensive
+  40-bit : minimum 80 LUTs
+  32-bit : minimum 64 LUTs
+
+Time to rethink ...
+
+</pre>
+<b>Related</b>
+<br>
+<a href="https://products.avnet.com/shop/en/ema/kits-and-tools/development-kits/aes-ku040-db-g-3074457345630043740">Avnet AES-KU040-DB-G (XCKU040 Based Dev Board)</a><br>
+
+</div></body></html>
+
+
+
