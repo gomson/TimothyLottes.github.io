@@ -1,0 +1,9 @@
+<html><head><link rel="stylesheet" href="style.css"></head><body><div class="page">
+<h1>20110907 - Parallel Programming With Clones</h1>
+<br>
+
+This is a very simple way to do CPU parallel programming which automatically handles load ballancing without requiring atomic operations. Start the same program running on N threads in parallel sharing the same memory space. Write the program such that,<br /><br />(1.) The program can skip over work which it knows has been completed by another clone.<br /><br />(2.) That clones will always write the same results to memory for data.<br /><br />Under these rules, any thread can be preempted and the program continues, when the thread returns it quickly skips ahead to the front of computation. Threads trade sometimes redoing work for avoiding expensive communication and synchronization. A simple example,<br><br /><pre>// frameCounter advances by one each frame<br />uint32_t frame; <br />...<br />// check if should start task<br />volatile uint32_t taskStart; <br />volatile uint32_t taskEnd;<br />if(taskStart != frame) <br />{ taskStart = frame; DoTask(); MemoryBarrier(); taskEnd = frame; }<br />...<br />// do some other work<br />...<br />// verify task was completed<br />// before using results of task<br />if(taskEnd != frame) <br />{ DoTask(); MemoryBarrier(); taskEnd = frame; }<br />...<br />// use results of DoTask()</pre><br />Keep data double buffered and setup a simple barrier construct so that threads cannot fall over two frames behind. Also insure that threads are running enough out of phase so that they do not all always attempt to do all the same work.<br /><br />For exceptions to the rule, keep track of a threadIdx for each thread (perhaps in thread local storage). External interfaces need to be predicated to only run in one thread, for example OpenGL access requires that calls be predicated to only the thread which owns the active GL context.
+</div></body></html>
+
+
+
