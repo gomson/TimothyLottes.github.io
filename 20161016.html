@@ -1,0 +1,55 @@
+<html><head><link rel="stylesheet" href="style.css"></head><body><div class="page">
+<h1>20161016 - Instruction Fetch Optimization</h1>
+<br>
+
+Been reading the <a href="http://www.xilinx.com/support/documentation/data_sheets/ds181_Artix_7_Data_Sheet.pdf">Artix-7 FPGAs Data Sheet: DC and AC Switching Characteristics</a> to better understand requirements for higher clock FPGA design. 
+
+Seems as if the only point in using BRAM output register is if the output would have otherwise just gone to a CLB's output register.
+Registering instead at the BRAM would remove a large delay.
+Also looks like if doing a load from CLBRAM, there isn't enough time for a level of LUT between the fetch and setting DSP inputs without adding another pipeline stage,
+but maybe possible to have CLBRAM address on clock N, then route CLBRAM output to DSP input registers on clock N+1.
+This doesn't appear to be possible with BRAM (almost double the clock to output delay), in that case might as well put in the LUT because it will require another pipeline stage (compared to CLBRAM with no LUT).
+Still learning...
+<br>
+<br>
+<b>Possible Instruction Fetch Timing Optimization?</b>
+<br>
+On the critical path for instruction fetch,
+seems like there might only be time enough for one level of LUT to generate the BRAM address for the next instruction,
+sourcing from the fetched instruction and registers from the prior clock.
+Possible optimized setup might be as described below (using ' to remark value for next clock).
+For a 10-bit program counter (enough for one BRAM), this takes 20 LUTs for the address generation.
+Then if program counter only advances in the lower 8-bits, the two adders takes 16 LUTs total.
+Plus some extra overhead for feedback.
+<br>
+<br>
+<pre>// some non-code below (enough to describe the idea)
+// generate address for next fetch
+// correct for not always having the correct adrNext
+// absolute call/branch must be even address, so "adr&1" is the correct next address
+// both, imm(inst) and decode(inst), are direct routed (no LUT)
+adr'={
+  imm(inst), // immediate absolute call/branch address always aligned to the first of 2 words
+  adrRet,    // return address
+  retNext,   // if prior was a return, this is the return+1
+  adrNext,   // if continuing this instruction, the incremented address from prior
+  adr&1,     // if prior was an immediate, inline next value
+}[choose(decode(inst),feedback)]; // 2 LUTs/bit (13:1 function)
+
+// feed back mux choice for next clock corrections
+feedback'=feedback(inst);
+
+// instruction fetch
+inst'=bram[adr'];
+
+// not based on adr' because that would be an extra LUT level
+adrNext'=adr+1; 
+retNext'=adrRet+1;</pre>
+
+
+
+
+</div></body></html>
+
+
+
