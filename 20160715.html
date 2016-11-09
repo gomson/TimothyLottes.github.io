@@ -1,0 +1,55 @@
+<html><head><link rel="stylesheet" href="style.css"></head><body><div class="page">
+<h1>20160715 - LED Displays</h1>
+<br>
+<center><i>Gathering information to attempt to understand what is required to drive indoor LED sign based displays.</i></center>
+<br>
+<b>Target</b>
+<br>
+256x128 2:1 letter box display (NES was 256 pixels wide).
+<br>
+<br>
+<b>How do LED Modules Work?</b>
+<br>
+<a href="https://www.adafruit.com/products/607">Adafruit</a> provides 
+<a href="https://learn.adafruit.com/32x16-32x32-rgb-led-matrix?view=all">one description how to drive a 32x16 LED module</a>.
+Attempting a rough translation.
+LEDs are either on or off.
+The 32x16 panel can only drive 64 LEDs at one time,
+organized as two 32x1 lines 8 rows apart.
+Scanning starts with lines {0,9}, then {1,10}, then {2,11}, and so on.
+<br>
+<br>
+Panels are designed to be chained, driven by a 16-bit connector which provides 2 pixels per clock (one pixel for top and one for bottom scan-line).
+Looks like <a href="http://www.unit-led.com/ph2s5mm-indoor-led-module.html">some other grouped LED panels</a> go up to 128x128, driven by 4 row chunks of 128x32, each built from two chained 64x32 panels.
+Seems like the 64x32 panels are driven with 2 lines of 64 pixels (based on the addition of one extra address bit).
+Could not find a good description of chaining yet.
+<br>
+<br>
+Seems like the 64x32 panels have roughly a 1/16 duty cycle (meaning only 1/16 of the LEDs are active at any one time).
+LED displays are low-persistence high-frame-rate displays with binary pixels.
+Based on <a href="https://forums.adafruit.com/viewtopic.php?f=47&t=26130">this thread</a> they can drive one cable at 40 MHz.
+So a 128x128 panel with 4 cables would be roughly 80M pixels / (128*32 pixel/frame) = 19.5 thousand frames per second.
+<br>
+<br>
+The basic Pulse Width Modulation (PWM) to modulate brightness would transform this low-persistence display into something effectively scan-and-hold,
+just with a lot of micro-strobed sub-frames doing PWM across the effective "scan-and-hold" period.
+Getting something truly low-persistence is more of a challenge.
+These displays can be over 1500 nits (even with a 1/16 duty cycle).
+So one option for lower persistence is to actually insert black frames between frames, 
+dropping the scan-and-hold time.
+<br>
+<br>
+A 120 Hz frame rate provides 8.333 ms of frame time,
+switching to half black frames would drop to 4.16 ms (which isn't yet low persistence IMO),
+and would reduce to a 750 nit display (half the contrast),
+leaving roughly 80 or so sub-frames for PWM.
+<br>
+<br>
+A 240 Hz frame rate at half black frames could be at the right compromise between lost contrast and low persistence.
+A 480 Hz frame rate with no black frames might be able to provide full contrast, and low enough persistence, 
+but likely would need some seriously good temporal dithering.
+<br>
+</div></body></html>
+
+
+
