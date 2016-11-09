@@ -1,0 +1,78 @@
+<html><head><link rel="stylesheet" href="style.css"></head><body><div class="page">
+<h1>20161011 - Forth Hardware Thoughts</h1>
+<br>
+
+James Bowman's FPGA based J1 : 
+<a href="http://excamera.com/sphinx/fpga-j1.html">Site</a> | 
+<a href="http://excamera.com/files/j1.pdf">PDF</a> | 
+<a href="http://www.forth.org/svfig/kk/11-2010-Bowman.pdf">Presentation</a> |
+<a href="http://excamera.com/files/j1demo/docforth/">Forth Source</a>
+<br>
+
+Chuck Moore : 
+<a href="https://web.archive.org/web/20150429141814/http://www.colorforth.com/arith.htm">Arithmetic</a> |
+<a href="https://web.archive.org/web/20150425143433/http://www.colorforth.com/inst.htm">Instruction Set</a> |
+<a href="https://web.archive.org/web/20140212140151/http://www.colorforth.com/etherCode.htm">Ether Forth</a> |
+<a href="https://web.archive.org/web/20150324055250/http://www.colorforth.com/POL.htm">Problem Oriented Language</a>
+<br>
+<br>
+
+<b>GA144</b>
+<br>
+<a href="http://www.greenarraychips.com/home/about/index.html">GreenArrays</a><br>
+144 cores<br>
+9216 18-bit words of memory<br>
+21.3 mm^2 area on 180 nm process<br>
+0.65 watts at peak<br>
+666 MHz peak instruction rate
+<br>
+<br>
+At 180 nm, roughly 20 GA144s would fit in large GPU area: 144 cores * 20x = 2880 cores<br>
+At 180 nm, roughly 380 GA144s would fit in large GPU 250 watt budget: 144 cores * 380x = 54,720 cores<br>
+At 28 nm, assuming 40x smaller area than 180 nm, in large GPU die: 144 cores * 20x * 40x = 115,200 cores<br>
+115,200 cores * 64 words/core = 7,372,800 18-bit words of memory
+<br>
+<br>
+GA144 runs async, but has a peak instruction rate which is roughly 3x higher than GPUs of the 180 nm era 
+(based on <a href="https://en.wikipedia.org/wiki/List_of_AMD_graphics_processing_units">wikipedia numbers</a>). 
+
+The point of this thought experiment 
+was to roughly imagine how a forth based machine would scale in an alternative timeline
+where they had been commercially successful.
+Seems possible to scale to over 100 K cores on 28 nm.
+These forth cores don't directly compare to GPU cores.
+For example, GA144 38-bit multiply result takes 18 +* operations:
+115,200/18 = 6400 multiplies/clock,
+and forth designed around rational math instead of floating point.
+Seems possible that in terms of raw arithmetic, the forth machine would be competitive,
+if problems were solved in a "parallel forth" way.
+However, in terms of programmable logic, 
+the forth machine would likely be over an order of magnitude faster.
+Modern machines tend to use area and pipelining to make expensive operations (like multiply add) run fast,
+while GA144 effectively micro-codes them,
+keeping low area and much higher throughput for inexpensive operations.
+<br>
+<br>
+The imaginary scaled GA144 memory capacity looks possible for a high ALU/MEM ratio.
+Note GA144 only has 64 words of memory per core.
+Working this from a different perspective, the Epiphany V is 64 MB of on-chip memory.
+That 64 MB divided across 256 K forth sized cores is again only 256 bytes of memory (or 64 32-bit words/core).
+Point being, if one wanted to scale to massive counts of simple cores,
+memory/core has to be tiny.
+<br>
+<br>
+<i>Which brings up the ultimate question:
+is it possible to practically leverage the order of magnitude increase in performance for simple operations,
+when one needs to deconstruct every problem into such small tasks?</i>
+
+
+
+
+
+
+
+ 
+</div></body></html>
+
+
+
