@@ -1,0 +1,33 @@
+<html><head><link rel="stylesheet" href="style.css"></head><body><div class="page">
+<h1>20070705 - UDP Player Bandwidth</h1>
+<br>
+
+
+
+
+More useful info on player maximum peak bandwidth with UDP packets.
+<br>
+<br>
+<ol><li>Overhead to send 1 UDP packet = 46 bytes.</li> 
+<li>18 bytes is the ethernet header/footer.</li> 
+<li>20 bytes is the IPV4 header.</li> 
+<li>8 bytes is the UDP header.</li> 
+<li>Minimum/maximum ethernet packet size is 64/1518 bytes.</li> 
+<li>So UDP payload minimum/maximum is 18/1472 bytes.</li></ol>
+<br>
+Using 128 Kbps (16 KB/s) as a maximum upload rate (low end DSL connection), 
+there is a trade off between high packet interactivity and payload (useful) bandwidth.
+<br><br>
+<ol><li>64 byte packet = 18 byte payload = 256 packets/sec = 4608 bytes/sec</li> 
+<li>80 byte packet = 34 byte payload = 204 packets/sec = 6936 bytes/sec</li> 
+<li>96 byte packet = 50 byte payload = 170 packets/sec = 8500 bytes/sec</li> 
+<li>128 byte packet = 82 byte payload = 128 packets/sec = 10496 bytes/sec</li></ol>
+
+
+
+
+
+</div></body></html>
+
+
+
