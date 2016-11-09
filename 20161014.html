@@ -1,0 +1,81 @@
+<html><head><link rel="stylesheet" href="style.css"></head><body><div class="page">
+<h1>20161014 - Possible Directional Routing Hoplite Variant?</h1>
+<br>
+<center><i>EDIT: One that might not deadlock...</i></center>
+<br>
+<pre>
+            +------+      +------+      +------+
+            |      |      |      |      |      |      
+            V      |      V      |      V      |      
+      +----[_]<---[_]<---[_]<---[_]<---[_]<---[_]<---+
+      |     |      ^      |      ^      |      ^     |
+      |     V      |      V      |      V      |     |
+      +--->[_]--->[_]--->[_]--->[_]--->[_]--->[_]----+
+            |      ^      |      ^      |      ^      
+            V      |      V      |      V      |      
+      +----[_]<---[_]<---[_]<---[_]<---[_]<---[_]<---+
+      |     |      ^      |      ^      |      ^     |
+      |     V      |      V      |      V      |     |
+      +--->[_]--->[_]--->[_]--->[_]--->[_]--->[_]----+
+            |      ^      |      ^      |      ^      
+            V      |      V      |      V      |      
+      +----[_]<---[_]<---[_]<---[_]<---[_]<---[_]<---+
+      |     |      ^      |      ^      |      ^     |
+      |     V      |      V      |      V      |     |
+      +--->[_]--->[_]--->[_]--->[_]--->[_]--->[_]----+
+            |      ^      |      ^      |      ^
+            |      |      |      |      |      |
+            +------+      +------+      +------+
+</pre>
+
+<br>
+<center><i>Old post which would definitely deadlock...</i></center>
+<br>
+
+Thinking about minimal grid based routing.
+Two things I don't like about the <a href="http://fpga.org/tag/hoplite/">Hoplite</a>,
+<br>
+<br>
+(1.) Full chip return paths.<br>
+(2.) Route length not proportional to 2D locality.
+<br>
+<br>
+Like the simplified router and crossbar.
+Wondering if there is a way to improve the routing by adjusting the fixed directions and removing the full chip return paths.
+Came up with this idea, but not sure if it is deadlock free yet.
+Likely this is well researched and has some proper name, but I'm not well learned in this area.
+<br>
+<pre>+--->+--->+--->+--->+--->+--->+--->+
+^    |    ^    |    ^    |    ^    |
+|    V    |    V    |    V    |    V
++<---+<---+<---+<---+<---+<---+<---+
+^    |    ^    |    ^    |    ^    |
+|    V    |    V    |    V    |    V
++--->+--->+--->+--->+--->+--->+--->+
+^    |    ^    |    ^    |    ^    |
+|    V    |    V    |    V    |    V
++<---+<---+<---+<---+<---+<---+<---+
+^    |    ^    |    ^    |    ^    |
+|    V    |    V    |    V    |    V
++--->+--->+--->+--->+--->+--->+--->+
+^    |    ^    |    ^    |    ^    |
+|    V    |    V    |    V    |    V
++<---+<---+<---+<---+<---+<---+<---+</pre>
+<br>
+Hoplite is only right and down, with a full chip return to loop around.
+This is right-only on even rows, left-only on odd rows,
+then up-only on even columns, down-only on odd columns.
+Requires grid of cores to be a multiple of 2 in each dimension.
+Enables a message to quickly turn around.
+<br>
+<br>
+Haven't fully thought through routing logic,
+but the general idea is that if a packet needs to move in a direction not supported on a row or column,
+it get routed on the other axis so it can switch direction.
+
+
+
+</div></body></html>
+
+
+
