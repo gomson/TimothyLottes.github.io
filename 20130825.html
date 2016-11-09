@@ -1,0 +1,22 @@
+<html><head><link rel="stylesheet" href="style.css"></head><body><div class="page">
+<h1>20130825 - Modern Memory Mapping</h1>
+<br>
+<b>Thread Local Storage via Mapping</b>
+<br>
+This is on my OS interface wishlist: MAP_THREAD_PRIVATE support. Ability to allocate different physical pages backing virtual memory per thread of an application.<br>
+<br>
+<b>Large Pages Initialized to File Contents for Private Modify</b>
+<br>
+Also on my OS wishlist. Large pages as in 2MB pages on x86-64 to avoid TLB pressure. Current path in most OSs,<br>
+<br>
+(1.) Map does nothing but setup non-physically backed virtual memory.<br>
+<br>
+(2.) First application access faults, then populates the page table again with physical memory, and zero fills the 2MB page(s). This has an extra page table adjustment, and also a zero fill which is not needed.<br>
+<br>
+(3.) App loads file into memory (typically a memcpy).<br>
+<br>
+Just wastefull. In theory something like MAP_PRIVATE should just work in this case to remove the extra zero fill, except the file page cache doesn't use large pages, so this insures non-large pages. Also MAP_PRIVATE doesn't protect the application from writes to the file from other applications (any page not modified possibly gets the latest data from the shared physical page of the file, instead of the value of the file at map time). Finally operating systems like Linux lack a feature like FreeBSD's MAP_NOSYNC which would enable a MAP_PRIVATE mapping to avoid the constant saves of modified pages back to the physical storage.
+</div></body></html>
+
+
+
