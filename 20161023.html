@@ -1,0 +1,45 @@
+<html><head><link rel="stylesheet" href="style.css"></head><body><div class="page">
+<h1>20161023 - Sphere Tracing AA</h1>
+<br>
+<i>General idea for anti-aliasing with sphere tracing. The end result of this would be a very analog film feeling image with grain...</i>
+<br>
+<br>
+<strong>Ray Directions</strong> - Shoot one ray per pixel and use a good temporally changing low discrepancy sampling for ray direction.
+<br>
+<br>
+<strong>First Hit</strong> - Trace forward until 2D projected distance to surface is within pixel diameter. 
+I'm using diameter here because one wants a thin feature to show up as partial coverage across at least 2 pixels (to get good AA).
+Likely this distance needs a tuning knob, best might be half between pixel radius and diameter, depends on visual preference.
+<br>
+<br>
+<strong>Coverage</strong> - Compute pixel coverage and store coverage with ray output. 
+This part I'm speculating on and would need to try to see what works. 
+Initial idea: step one more time through the surface, 
+then take the last 2 distance samplings and try to estimate the actual surface, 
+sample the distance function at the estimated surface, 
+take this final distance as "coverage" 
+(on surface = full coverage, reduce coverage as distance increases). 
+Exact coverage isn't as important has having coverage approach zero as ray passes a surface without getting near enough. 
+Error on surfaces will just show up as temporal grain, which is visually pleasing.
+<br>
+<br>
+<strong>Reconstruction</strong> - For each pixel take nearest 11 rays. 
+Take a weighted sum of ray colors where weight is <tt>F(DistanceFromRayToPixelCenter) * Coverage</tt> then divide by sum of weight. 
+The <tt>F()</tt> function is the filter kernel, where fastest (but not highest quality) is the Gaussian, 
+<tt>exp2(-scale*dst*dst)</tt>. 
+Could also do disk average (return 1.0 under a given radius, and some smooth fall-off outside that radius). 
+Note <tt>DistanceFromRayToPixelCenter</tt> is constantly changing temporally due to low discrepancy sampling. 
+Also nearest 11 rays is a fixed pattern,
+<br>
+<br>
+<pre>
+   XXX
+  XXOXX <-- 11 sample pattern
+   XXX</pre>
+<br>
+<strong>Grain</strong> - After reconstruction add some grain to help mask the temporally changing sampling pattern.
+<br>
+</div></body></html>
+
+
+
