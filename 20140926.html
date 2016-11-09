@@ -1,0 +1,8 @@
+<html><head><link rel="stylesheet" href="style.css"></head><body><div class="page">
+<h1>20140926 - Post Depth Coverage</h1>
+<br>
+Fast transparency blending with MSAA. Render opaque with standard MSAA. Then attach a no-MSAA color buffer to use with the MSAA depth buffer to composite transparent content. When blending, use "post depth coverage" to get the percentage of the pixel which passes the depth test, which is then used to reduce transparency. Render via front-first alpha blending (where at the end, alpha keeps amount of transparency left). Finally during a custom MSAA resolve, composite the final transparency over the resolved MSAA.
+</div></body></html>
+
+
+
