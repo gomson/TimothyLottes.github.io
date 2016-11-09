@@ -1,0 +1,48 @@
+<html><head><link rel="stylesheet" href="style.css"></head><body><div class="page">
+<h1>20160127 - Temporal AA Neighborhood Clamp</h1>
+<br>
+<i>Thoughts too long for the twitter thread on this,
+back from my memory of working on this problem...</i>
+<br>
+<br>
+In TAA the purpose of the neighborhood clamp is to remove ghosting.
+Using the surrounding local neighborhood of the current frame 
+to bound the color of the reprojection of the prior frame.
+Many techniques have been tried here,
+including using the min and max of the neighborhood as an AABB to clip to.
+Clipping to two AABBs one in RGB and the other in YCoCg, for a tigher bound.
+Etc.
+It is possible to continue down this path adding more complex and tigher bounds shapes,
+and doing better clipping for when colors are out of bounds.
+But ultimately it seemed like this exploration had passed the optimum !/$ point,
+and settled on the following low-tech solution for the fast path,
+<br>
+<ul>
+<li>Work in YCoCg.</li>
+<li>Can reduce to 5 sample neighboorhood in a + pattern.</li>
+<li>Use simple min and max instead of clipping to AABB.</li>
+</ul>
+<br>
+<b>Why?</b>
+<br>
+Lets reduce the problem to strictly monochrome.
+The complex 3D bound shape is now reduced to a 1D segment
+defined by the min and max of the neighborhood.
+When the neighborhood is high frequency and high contrast,
+which is common say with a field of grass,
+the min can be a shadow tone, and the max can be a bright highlight.
+Then just about any reprojection passes the neighborhood clamp without adjustment,
+and ghosting results.
+Or even if the reprojection gets clampped, it will be at the extreme ends of the large segment,
+resulting in distortion to the image.
+<br>
+<br>
+Ultimately this kind of approach cannot solve the problem at hand,
+so I stopped searching in this specific solution space...
+
+
+
+</div></body></html>
+
+
+
