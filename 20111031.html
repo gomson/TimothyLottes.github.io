@@ -1,0 +1,10 @@
+<html><head><link rel="stylesheet" href="style.css"></head><body><div class="page">
+<h1>20111031 - Exclusive Core Access</h1>
+<br>
+
+<i>One of the top items on my OS feature wishlist: Exclusive CPU Core Access.</i><br /><br /><b>Concept</b><br />Enables a full screen application like a game to have exclusive access to CPU cores. Removes preemption on those cores. One important step towards the path of solving the latency problem on non-console devices.<br /><br /><b>How to Implement</b><br />The OS reuses it's CPU Hot-Plug functionality to migrate threads off the cores, then grants the application exclusive access. When the app is back-grounded or exits, the CPU cores are reclaimed.<br /><br /><b>Why Not?</b><br />The modern OS deserves a redesign, the concept of sharing a single processor core is outdated as all devices are going to be many-core from now on. Can certainly have both hard real-time and time-sharing in the same OS on the same hardware.
+
+</div></body></html>
+
+
+
