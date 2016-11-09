@@ -1,0 +1,29 @@
+<html><head><link rel="stylesheet" href="style.css"></head><body><div class="page">
+<h1>20090605 - SIMD Binning And Caches</h1>
+<br>
+
+<pre>... since scatter time is a function of the number of cache lines, 
+it might NOT be wise to bin into queues arranged in memory like this,
+
+int Queue4Pixel0[16], int Queue4Pixel1[16], int Queue4Pixel2[16], ...
+
+offset = (pixel << 4) + bin
+
+Because only 1 queue would be on a cache line, so the scatter at best would be 16 cycles. 
+Read back of the data later also might not be ideal in this format. 
+Other option is this which has better cache locality at the expense of more complex offset logic,
+
+int QueueBin0ForPixels0to16[16], int QueueBin1ForPixels0to16[16], ...
+
+offset = (pixel & 15) + (((pixel & (~15)) + bin) << 4);
+
+So for each grouping of 16 pixels, each queue bin is on the same cache line. 
+Which in the completely coherent case would take a clock cycle to scatter to, 
+ and would degrade in performance as a function of 
+ how many different queue lengths there are in the groupings of 16 pixels.
+</pre>
+
+</div></body></html>
+
+
+
