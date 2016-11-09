@@ -1,0 +1,81 @@
+<html><head><link rel="stylesheet" href="style.css"></head><body><div class="page">
+<h1>20161101 - Linear Dithering Before Transfer Function</h1>
+<br>
+<b>Source Material</b>
+<br>
+<a href="http://gpuopen.com/vdr-follow-up-fine-art-of-film-grain/">Fine Art of Film Grain</a><br>
+<a href="http://gpuopen.com/vdr-follow-up-grain-and-fine-details/">Grain and Fine Details</a><br>
+<a href="http://gpuopen.com/gdc16-wrapup-presentations/">Advanced Techniques and Optimization of VDR Color Pipelines</a> - Link to GDC presentation on this page<br>
+<br>
+<b>Extra Notes</b>
+<br>
+The point of <a href="http://gpuopen.com/vdr-follow-up-fine-art-of-film-grain/">Fine Art of Film Grain</a> 
+was to show how to take an artist generated grain texture, 
+specifically something which isn't a perfect repeating blue noise texture, 
+and make it energy conserving so it can serve double usage as video grain and dithering. 
+
+Bart Wronski's <a href="https://bartwronski.com/2016/10/30/dithering-part-two-golden-ratio-sequence-blue-noise-and-highpass-and-remap/">Dithering Part Two - Golden Ratio Sequence, Blue Noise and Highpass and Remap</a>
+qualifies the frequency domain output of repeated highpass with remap used to reshape a poor quality noise. 
+The technique I use to generate an artistic grain texture is a little different, 
+I would do many repeated highpass passes, 
+and only at the end do one remap step.
+<br>
+<br>
+<b>Linear Dither Before Non-Linear Quantization</b>
+<br>
+
+My VDR GDC presentation talked about this, 
+but the slides don't go into enough detail on why.
+This as an alternative method of quantization to the traditional quantization in the non-linear output space. 
+Both have various cost/quality trade-offs.
+<br>
+<br>
+
+In order for a dither to be energy conserving, 
+meaning not introduce any bias into the signal temporally, 
+on a still image, 
+the average of the output values over time should be the non-dithered input. 
+Best way to test this is to try to dither to 2-bits/channel on a color photograph with a temporal dither. 
+If the photo's contrast or saturation changes, then a bias had been introduced in the signal.
+<br>
+<br>
+
+Near black, bias can also be a large problem. 
+To avoid any bias, over time, 
+any amount of positive dithering must be matched with a linearly equal amount of negative dithering temporally. 
+However the display and signal cannot reproduce negative luma. So dithering must be adjusted as image luma approaches zero (talked about around slide 95-96 in my GDC presentation).
+
+<br>
+<br>
+In a 2-bit/channel dithering ground truth test, a similar adjustment must be done to the whites. 
+However in practice I don't do the correction for whites with typical 8-bit output, 
+because I don't feel it is perceptually important. It is perceptually important in the darks, 
+and note be very careful here, because some displays like WRGB OLED TVs clamp a large range of darks to zero by default. 
+Evaluation of darks need to be done in a theater black ambient level room with a very low APL scene on a calibrated display which is actually capable of correct black output close to zero.
+<br>
+<br>
+
+Hardware ROP rounds to nearest in the non-linear output space. 
+Linearly speaking, this rounding is biased where the bias changes based on the slope of the transfer function for the non-linear output space. 
+Likewise if a dither is added after the linear to non-linear transform, 
+then equal positive and negative dither contribution to that non-linear signal before quantization will also have bias 
+(which changes based on the slope of the transfer function).
+<br>
+<br>
+
+While it is possible to correct for bias with dithering in the non-linear output space, 
+I find it excessively expensive to do so in real-time. 
+The solution I use instead is to introduce dither linearly with enough dither so that there are no bands of unchanging values, 
+and so that the final non-linear quantized value is temporally switching between at least 2-3 values. 
+Given the linear dithered value,
+it is possible to do linear nearest quantization in the shader instead of letting the hardware do non-linear nearest in say a 10:10:10:2 non-linear output.
+<br>
+<br>
+
+Lastly, when adding grain/dither linearly with output PQ2048 transfer functions, 
+an energy conserving asymmetrical grain distribution must be used (covered around slide 99 in my GDC presentation).
+
+</div></body></html>
+
+
+
