@@ -1,0 +1,55 @@
+<html><head><link rel="stylesheet" href="style.css"></head><body><div class="page">
+<h1>20100104 - OnLive Notes</h1>
+<br>
+
+<pre>Notes from an OnLive Video Demonstration and Talk ...
+
+LATENCY
+=======
+They target 80ms round trip interactive latency 
+ for 1000 mile range from data center. 
+From rough numbers given in talk and other estimation,
+
+11 ms - Round trip of 2000 miles (speed of light).
+21 ms - Round trip, in practice.
+
+25 ms - Round trip (+DSL/Cable provider overhead).
+01 ms - Encode frame.
+08 ms - Decode frame (example from laptop).
+33 ms - Maxed out 30Hz frame in game.
+12 ms - Client side input latency and misc.
+-----
+80 ms - Total.
+
+VIDEO COMPRESSION
+=================
+About 1 ms to compress a frame: 1.5 Mbps SDTV, 5 Mbps HDTV. 
+In comparison DVD maximum rate for audio+video is 10 Mbps and Blu-ray is 48 Mbps. 
+The 5 Mbps seems like really low quality from the numbers alone. 
+No GOP, probably just I and P without B frames. 
+Comments from Dark Shikari suggests OnLive is simply splitting encoding 
+ into 16 independent rectangular tiles and using H.264 
+ as the method to bring encoding latency down.
+
+NETWORK ROUTING
+===============
+Problems with home internet include jitter, packet loss, reordering, 
+ and routers delaying packets to check for exploits. 
+They have deals with ISPs to provide direct routes on internet to minimize latency 
+ and have tree structured ip-multicast to enable efficient 100K spectators 
+ (1000 per multicast stream).
+
+BREAKDOWN OF TYPICAL GAME COST
+==============================
+From the talk (they also include extra costs: $12/game piracy, $12/game used game sales):
+
+$15 - Retail margin.
+$18 - Wholesale ($7 returns, $4 COGS, $7 platform royalty).
+$27 - Publisher gross margin.
+---
+$60 - Total.</pre>
+
+</div></body></html>
+
+
+
