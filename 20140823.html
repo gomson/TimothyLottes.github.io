@@ -1,0 +1,64 @@
+<html><head><link rel="stylesheet" href="style.css"></head><body><div class="page">
+<h1>20140823 - MinWM</h1>
+<br>
+<a href="https://github.com/TimothyLottes/MinWM">github.com/TimothyLottes/MinWM</a><br>
+<br>
+<i>Placed up the X Window Manager I've been using for over a decade on GitHub.
+It provides simple full or split screen tiled windowing with virtual windows.
+Nothing more. Ideal for me, probably not ideal for you.
+Works great now that GIMP can be placed in "single window mode".</i>
+<br>
+<br>
+<pre>
+ABOUT
+-----
+ Simple yet very useful single screen X Window Manager.
+ Designed to minimize wasted user time interacting with windows.
+ No configuration files.
+ Tiny x86-64 binary.
+
+------------------------------------------------------------------------------
+KEYS
+----
+ ALT+ESC .......... Close window.
+ ALT+TAB .......... Cycle through window list on virtual screen (like Windows).
+ ALT+` ............ Cycle window shape between full, and tiled positions.
+ ALT+1 ............ Switch virtual screen left.
+ ALT+2 ............ Switch virtual screen right.
+ ALT+3 ............ Move focus window to virtual screen left.
+ ALT+4 ............ Move focus window to virtual screen right.
+
+------------------------------------------------------------------------------
+WINDOW LIST
+-----------
+ The windows list is ordered as follows,
+
+  { most recently used, 2nd most recently used, ..., last used }
+
+ While ALT is held down pressing TAB will cycle through list,
+ going to the last reciently used window from the current window.
+ It will wrap around at the end.
+ After ALT is released, the list is updated.
+ The new current window is moved to the front of the list.
+
+------------------------------------------------------------------------------
+COMPILE
+-------
+ Only requires a C compiler and the X11 library.
+ Try something like,
+
+  gcc minwm.c -Os -o minwm -I/usr/X11/include -L/usr/X11/lib -lX11
+  strip minwm
+
+ Then setup your .xinitrc file like,
+
+  xrdb -merge $HOME/.Xresources
+  xterm -rv -ls +sb -sl 4096 &
+  exec $HOME/minwm
+
+ Then run xinit and then start programs from the terminal.
+</pre>
+</div></body></html>
+
+
+
