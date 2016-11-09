@@ -1,0 +1,100 @@
+<html><head><link rel="stylesheet" href="style.css"></head><body><div class="page">
+<h1>20160908 - Transistor Count Thoughts</h1>
+<br>
+
+<a href="https://en.wikipedia.org/wiki/Transistor_count">Wikipedia's Transistor Count Page</a>
+<br>
+Really interesting page on Wikipedia. 
+Amazing how many of the original cache-free Acorn RISC Machines will fit in the transistor budget of modern processors.
+The rest of this post is some high level thinking about the compromises required to scale ALU density upwards by simplifying and shrinking core size down to something sized like an ARM2.
+<br>
+<br><tt>
+_____________________ARM2 ~ _______30,000 transistors ~ ______1 ARM2<br>
+____________________80386 ~ ______275,000 transistors ~ ______9 ARM2<br>
+__________________Pentium ~ ____3,100,000 transistors ~ ____103 ARM2<br>
+____________1st Pentium 4 ~ ___42,000,000 transistors ~ ____800 ARM2<br>
+_____________________Cell ~ __241,000,000 transistors ~ __8,033 ARM2<br>
+_____________Apple A8 SOC ~ 2,000,000,000 transistors ~ _66,666 ARM2<br>
+22-core Xeon Broadwell-E5 ~ 7,200,000,000 transistors ~ 240,000 ARM2<br>
+________________AMD FuryX ~ 8,900,000,000 transistors ~ 296,666 ARM2
+</tt><br>
+<br>
+Dividing the 512 GB/s of external bandwidth for FuryX across a variable number of ARM2 sized cores clocked a 1 GHz,
+suggests as on-chip ALU scales beyond what a GPU can do,
+that cores must mostly fully consume on-chip generated data.
+Also given GPU on-chip routing networks typically have some small integer scaling of off-chip bandwidth,
+this suggests not the classic GPU formula for production and consumption of on-chip data
+(meaning not routing through some coherent L2, but rather more neighbor to neighbor, or very localized).
+<br>
+<br><tt>
+___1 ARM2 ~ 512 GB/s ~ 512 B/op<br>
+__16 ARM2 ~ _32 GB/s ~ _32 B/op<br>
+_256 ARM2 ~ __2 GB/s ~ __2 B/op<br>
+__4K ARM2 ~ 128 MB/s ~ __8 op/B <--- FuryX is a 4K core GPU<br>
+_64K ARM2 ~ __8 MB/s ~ 128 op/B<br>
+256K ARM2 ~ __2 MB/s ~ 512 op/B
+</tt><br>
+<br>
+
+Below looking at this from another perspective,
+taking 6 G transistors for SRAM cells, dividing into N cores, looking at limit of SRAM bytes per core
+(not including anything other than 6 transistors per bit in this approximation).
+If one wanted to scale to mass numbers of simple small cores, the amount of on-chip memory per core would be tiny.
+Suggests that maybe sharing of instruction RAMs and on-chip memories becomes one of the major design challenges.
+<br>
+<br><tt>
+___1 ~ 128 MB<br>
+__16 ~ __8 MB<br>
+_256 ~ 512 KB<br>
+__4K ~ _32 KB<br>
+_64K ~ __2 KB<br>
+256K ~ 512 B
+</tt><br>
+<br>
+
+This next table looks at 64K cores clocked at 1 GHz running at 64 frames/second, or roughly 1024 Gop/frame.
+Then taking this 1024 Gop/frame number divided by the number of instructions fetched from off-chip memory per frame.
+Providing a rough idea of the level of instruction reuse required.
+This table tops out at 4 G instructions working with a 16-bit instruction width,
+that would be fully utilizing 512 GB/s of off-chip bandwidth.
+<br>
+<br><tt>
+__4 G instructions ~ __256 usage average/instruction ~ ___full usage of off-chip bandwidth<br>
+128 M instructions ~ __8 K usage average/instruction ~ ___1/32 usage of off-chip bandwidth<br>
+__4 M instructions ~ 256 K usage average/instruction ~ _1/1024 usage of off-chip bandwidth<br>
+128 K instructions ~ __8 M usage average/instruction ~ 1/32768 usage of off-chip bandwidth
+</tt><br>
+<br>
+Suggests that the majority of program workflow must traverse similar code paths,
+either through SIMD or looping or something else.
+Another important aspect to this problem is looking at random access (unique) vs broadcast (same) for filling instruction RAMs.
+Starting with assuming instruction RAMs are not shared across cores, and cores are running random programs (non-SIMD).
+<br>
+<br><tt>
+4 Ginst/frame / 64 Kcores = 64 Kinst/core/frame ~ ___full usage of off-chip bandwidth<br> 
+_____________________________8 Kinst/core/frame ~ ____1/8 usage of off-chip bandwidth<br>
+_____________________________1 Kinst/core/frame ~ ___1/64 usage of off-chip bandwidth
+</tt><br>
+<br>
+If broadcast is not used, programs need to be pinned to a given core across multiple frames.
+Suggests as cores/chip increases, broadcast update of on-chip RAMs is critical.
+Meaning if supporting unique control paths per core, the window of code must the the same across many cores.
+<br>
+<br>
+These tiny poor estimations of large scale effects paints a very clear picture of why GPUs 
+are SIMD machines with SIMD units clustered and sharing memories.
+
+I'm personally interested in figuring out what comes after the GPU,
+meaning what does to the GPU what the GPU did to the CPU in terms of ALU density on a chip.
+This post talks in terms of the classic model 
+of an ALU connected to a memory, 
+fetching operands and sending results back into the memory.
+Perhaps we are at the point where the next form of scaling requires leaving that model behind?
+
+
+
+
+</div></body></html>
+
+
+
