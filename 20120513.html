@@ -1,0 +1,18 @@
+<html><head><link rel="stylesheet" href="style.css"></head><body><div class="page">
+<h1>20120513 - Frame Stutter Reduction Via Time Smoothing</h1>
+<br>
+Something I have not had time to try... Lets look at the typical source of PC stutter when v-sync is enabled on a single-GPU configuration: 
+<br><br>
+(1.) The CPU has already pushed at least 1, and more likely 2 or 3 frames to the GPU due to the Microsoft driver model. So the CPU is working quite a bit ahead of the GPU.
+<br><br>
+(2.) The GPU misses v-sync. This is the source of the first stutter. The GPU now renders the frame and the other pushed frames, but these frames are displayed one frame behind in time.
+<br><br>
+(3.) The CPU notices the GPU had missed v-sync at some point, and now "corrects" for being behind in time, by skipping ahead. 
+<br><br>
+(4.) The GPU at some point later gets a frame which is now back to correct time. This is the source of the second stutter.
+<br><br>
+The idea here would be to feather the "correction" in time by smoothly distributing the temporal correction across many frames. The hope would be that the 2nd stutter in (4.) would be removed.
+</div></body></html>
+
+
+
