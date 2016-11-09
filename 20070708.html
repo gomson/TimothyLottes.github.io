@@ -1,0 +1,36 @@
+<html><head><link rel="stylesheet" href="style.css"></head><body><div class="page">
+<h1>20070708 - Breaking Firewalls</h1>
+<br>
+
+
+If the world ran only on static IPs with no firewalls, doing P2P connections would be easy. 
+Now when was anything worthwhile easy? Connecting the rest of the world requires breaking through firewalls and dealing with dynamic IP addresses.
+<br>
+<br>
+<ol><li>End point = 6 bytes.</li> 
+<li>Public end point is what server sees as ip:port for client.</li> 
+<li>Private end point is what client sees as ip:port for self.</li> 
+<li>All clients connect to server and server responds with public end point.</li> 
+<li>So all clients know their public end point.</li> 
+<li>Clients also give private end point to server.</li> 
+<li>NATs might mangle private end point in UDP packet so encript it.</li></ol> 
+<br>
+Here is how S (server or peer) can connect A (peer) to B (peer). This works both on local LAN and across the wide open internet with NAT and firewalls.
+<br><br>
+<ol><li>A is connected with S.</li> 
+<li>B is connected with S.</li> 
+<li>S sends private and public end points of A to B.</li> 
+<li>S sends private and public end points of B to A.</li>
+ <li>A sends packets to private and public end points of B.</li> 
+<li>B sends packets to private and public end points of A.</li>
+ <li>A locks in ip:port it sees from B.</li> 
+<li>B locks in ip:port it sees from A.</li></ol> 
+<br>
+Keep in mind that NAT (network address translation) might result in a different public end point on each connection attempt, 
+so during steps 5 and 6, they might have to IP/port scan by attempting multiple public end points seeded from the public end point sent in steps 3 and 4.
+
+
+</div></body></html>
+
+
+
