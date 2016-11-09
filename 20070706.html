@@ -1,0 +1,48 @@
+<html><head><link rel="stylesheet" href="style.css"></head><body><div class="page">
+<h1>20070706 - 510 Players on Screen at 128 Kbps</h1>
+<br>
+
+
+Here is the paper napkin model which started the idea behind the network logic for Atom, 
+a massively multi-player online game with first person shooter interactivity.
+<br>
+<br>
+<ol><li><a href="070703.htm">Mixed P2P and server centric model</a>.</li> 
+<li><a href="070705.htm">Maximum of 256 minimum sized UDP packets/sec</a>.</li> 
+<li>Goal to get as many players interacting at one time as possible.</li></ol>
+<br>
+Key concepts.
+<br>
+<br>
+<ol><li>Only send what players are looking or interacting with.</li> 
+<li>Closer players need to interact at higher frame rates.</li> 
+<li>Distant players need not interact at high frame rates.</li> 
+<li>Probably don't want to draw over 1000 players at one time.</li> 
+<li>Don't need more than 16fps of position updates for any player.</li> 
+<li>Players out of view need to be updated less frequently.</li> 
+<li>Players not being targeted need to be updated less frequently.</li> 
+<li>Player movement will be predicted and corrected when actual position is transmitted in a fluid way.</li></ol> 
+<br>
+Using the idea that players are sending packets directly to other peers to notify the peers of player movement and action, 
+here is one possible fixed distribution of 256 packets to support 510 players on screen at a given time,
+<br>
+<br>
+<ol><li>32 packets -- for 2 players -- gives 16 updates per second (targeting)</li> 
+<li>32 packets -- for 4 players -- gives 8 updates per second (close)</li> 
+<li>32 packets -- for 8 players -- gives 4 updates per second (near)</li> 
+<li>32 packets -- for 16 players -- gives 2 updates per second</li> 
+<li>32 packets -- for 32 players -- gives 1 updates per second</li> 
+<li>32 packets -- for 64 players -- gives 0.5 updates per second</li>
+ <li>32 packets -- for 128 players -- gives 0.25 updates per second (far)</li> 
+<li>32 packets -- for 256 players -- gives 0.125 updates per second (distant)</li></ol>
+<br>
+Now actual breakdown of packets would have to change dynamically in the game, but this shows that interacting with 510 players is possible. 
+Having another 10,000 to 60,000 players that are in very distant areas of the world and switching them in and out of the local pool of around 510 interactive players,
+ would be an easy way to support a massively online game with first person shooter interactivity.
+
+
+
+</div></body></html>
+
+
+
