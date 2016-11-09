@@ -1,0 +1,102 @@
+<html><head><link rel="stylesheet" href="style.css"></head><body><div class="page">
+<h1>20160909 - Thinking "Clearly" About 4K</h1>
+<br>
+The real advantage of this console "upgrade cycle" 
+is that now a developer should be able to produce a good <b>1080p @ 60 Hz</b> game
+without loosing pixel quality.
+<br>
+<br>
+However what is likely going to happen instead is 1st party titles under 4K marketing pressure
+will try for 4K, accepting a reduction of pixel quality,
+and get stuck at 30Hz.
+Games built around 30Hz won't scale to 60Hz due to CPU loads, etc,
+and we don't get 60Hz this round in the general case.
+Instead games will generally offer some amount of extra super-sampling for 1080p on upgrade consoles.
+<br>
+<br>
+<b>Beating the System</b>
+<br>
+If I was developing a console game for the "upgrade generation",
+I'd take advantage of 4K by dropping render resolution to 960x540 (yeah) in the game,
+then use a stylized CRT up-sampler.
+The advantage of 4K:
+540p shader scaled to 2160p has 4 lines per rendered line,
+so it is possible to have the scan-line effect without loosing as much brightness
+(three mostly solid lines with one 50% darker gap line is only a 1/8 drop in total brightness).
+540p@60Hz on a PS4 Pro is 135 Kflop/pixel, or roughly a 4.6x scaling of perf/pixel from a 1080p@30Hz PS4 title.
+That would be a transformative visual upgrade.
+<br>
+<br>
+
+<b>Maths</b>
+
+<pre>CONCLUSIONS ON 4K FOR CONSOLE "UPGRADE CYCLE"
+=============================================
+
+Majority of devs will render way under 4K,
+adopting up-scaling temporal AA to get to 4K,
+and will stay with 30Hz.
+
+The why,
+
+Xbox 360 was a 720p@30Hz target with 9 Kflop/pix.
+Many developers did less than 720p rendering on the 360.
+
+Xbox One is a 1080p@30Hz target with 19 Kflop/pix.
+So roughly double Xbox 360 perf/pix, a transformative change.
+Many developers continue to do less than 1080p rendering on Xbox One.
+
+PS4 is a 1080p@30Hz target with 29 Kflop/pix.
+I'm going to take this as the baseline Kflop/pix requirement 
+for a current generation visual standard.
+
+PS4 PRO in my opinion is a good 1080p@60Hz target with 34 Kflop/pix,
+as that maintains the PS4's perf/pixel standard.
+To hit 4K@30Hz is 17 Kflop/pix, 
+which is a downgrade to an Xbox One perf/pix level.
+
+Xbox Scorpio, using a 6.0 Tflop number, at 4K@30Hz is 24 Kflop/pix, 
+which does *not* hit the PS4 perf/pix quality standard,
+but does maintain an Xbox One perf/pix level.
+So as with 360 and XB1, devs will continue to render under native resolution.
+
+
+RAW DATA
+========
+
+Using "Google Supplied" numbers for Tflops,
+
+ 360 -> .24 Tflops [Xbox 360    ]
+ XB1 -> 1.2 Tflops [Xbox One    ]
+ PS4 -> 1.8 Tflops [PS4         ]
+ PRO -> 4.2 Tflops [PS4 Pro     ]
+ SCO -> 6.0 Tflops [Xbox Scorpio]
+
+And looking at flop/pix in units of 1000,
+
+                                    360   XB1   PS4   PRO   SCO
+ ================================= ===== ===== ===== ===== =====
+  960 x _540 @  30 Hz =  16 Mpix/s   15    77   116   270   386
+ 1280 x  720 @  30 Hz =  28 Mpix/s    9    43    65   152   217
+  960 x  540 @  60 Hz =  31 Mpix/s    8  __39_   58   135   193
+ 1280 x  720 @  60 Hz =  55 Mpix/s    4    22    33    76   109
+  960 x  540 @ 120 Hz =  62 Mpix/s    4    19    29    68    96
+ 1920 x 1080 @  30 Hz =  62 Mpix/s    4    19  __29_   68    96
+ 1280 x  720 @ 120 Hz = 111 Mpix/s    2    11    16    38    54
+ 1920 x 1080 @  60 Hz = 124 Mpix/s    2    10    14  __34_ __48_
+ 1920 x 1080 @ 120 Hz = 249 Mpix/s    1     5     7    17    24
+ 3840 x 2160 @  30 Hz = 249 Mpix/s    1     5     7    17    24
+ 3840 x 2160 @  60 Hz = 498 Mpix/s    0     2     4     8    12
+ 3840 x 2160 @ 120 Hz = 995 Mpix/s    0     1     2     4     6</pre>
+<br>
+
+
+
+
+
+
+
+</div></body></html>
+
+
+
