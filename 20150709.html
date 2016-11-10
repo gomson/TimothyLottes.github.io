@@ -1,0 +1,194 @@
+<html><head><link rel="stylesheet" href="style.css"></head><body><div class="page">
+<h1>20150709 - GPU Unchained ASCII Notes</h1>
+<br>
+
+<a href="20150328.html">Posted stills prior</a>, here are the notes, hopefull the "pre" tag works for everyone...<br>
+<br>
+<pre>
+================================================================================
+
+
+                                                               .
+                     ##X=--=X##  ##X=--=X##  ##      ##
+                     ##          __      ##  ##      ##
+                .    ##    -=##  ##      ##  ##      ##
+  .                  ##      ##  ##X=--=X##  ##      ##               .
+                     ##X=--=X##  ##          ##X=--=X##
+          .                                 _               .
+                              #                                 #        .
+ .      .   #   # #=-=# #=-=# #=-=# #=-=# -=#   #=-=# #=-=# #=-=#         .
+.:...    .. #   # #   # #     #   # ___ #   #   #   # # __# #   #   ...  :::..:.
+:::::::::::.# . # # . # # .:. # : # #   # . = . # . # # ... # . #.::::::::::::::
+|||||||'||| #=-=# # : # #=-=# # | # #=-=# #=-=# # : # #=-=# #=-=# ||||.|||||||||           
+!!!''!;!!!!!.....!..!..!.....!.!!!.!.....!.....!.!!!.!.....!.....!!!!!!!!!'''!!!
+:/:::/::::::::::::::::::::::::::'''''''''':::''::::::::::::::::::::/:::::::.::::
+''''/   ''''';' ' '     '                              ';'    '' '  ''''''''';''  
+   /     '  /                  ___                                   . '''  /
+                                |imothy Lottes
+
+
+
+================================================================================
+         VISUALIZING ALIASING IN MOTION - STILL VS SCROLLING FONTS [a]
+================================================================================
+
+     "Evaluation criteria for correct sharpness
+                                should be different for stills and video"
+
+SPATIAL PRECISION VS SHARPNESS
+------------------------------
+ - In motion, sharpess must be reduced to have good spatial precision
+
+LIVE EXAMPLE OF FONT RENDERING
+------------------------------
+ - 1/4 x 1/4 resolution rendering 
+ - Render via stylized even field aperture grille (arcade Trinitron)
+ - Font designed on pixel grid 
+ - Font rendered via function of min 1D distance to capsules (for lines)
+
+
+================================================================================
+                         FILTERING DIGITAL ORIGAMI [b]
+================================================================================
+
+      "Filtering is critical 
+              to convince the skeptical mind that a scene is believable"
+
+LIVE EXAMPLE OF SIMPLE SDF SCENE
+--------------------------------
+ - 1/2 x 1/2 resolution tracing
+ - Full resolution reconstruction
+ - Lots of high frequency sub-pixel sized content
+
+PROGRESSION TO SIMPLE SAMPLE JITTERED TEMPORAL FILTERING
+--------------------------------------------------------
+ - Simple gaussian resolve kernel (not enough samples/pix for negative lobes)
+ - Temporal feedback also weights samples by rcp of reprojected luma difference
+
+
+================================================================================
+                   LIMITS OF PER-PIXEL SEARCH AND SDF LOD [c]
+================================================================================
+
+      "Highly variable frame timing is a poison for high refresh rates"
+
+RAY HIT?
+--------
+ - Standard termination,
+     if(abs(distanceToSurface) <= distanceAlongRay * coneRadius) hit
+ - LOD termination,
+     ... <= distanceAlongRay * (coneRadius + steps * lodFactor)) hit
+ - Expands surfaces as ray march gets progressively more expensive
+
+CHOOSING A GOOD FILTER KERNEL
+-----------------------------
+ - Biased: 
+     1/(1 + abs(a-b) * const)
+ - Still not great: 
+     1/(1 + (abs(a-b) / max(minimum,min(a,b))) * const)
+ - Better:
+     square(1 - abs(a-b) / max(a,b,minimum))
+     
+
+================================================================================
+            1/4 AREA TRACE+FEEDBACK + FULL AREA RECONSTRUCTION [d]
+================================================================================
+
+     "Maintaining higher spatial precision
+               without increasing shading rate for higher quality visual"
+
+VISUAL EXAMPLE
+--------------   
+ - Still tracing at sample-jittered half resolution (1/4 area).
+ - Still sampling reprojection at half resolution.
+ - But sampling reprojection from full resolution source.
+ - And running reconstruction at full resolution.
+
+
+================================================================================
+                  HIERARCHICAL TRAVERSAL IN SINGLE KERNEL [e]
+================================================================================
+
+    "Reorder work to keep ALUs fully loaded,
+                      ok to leverage poor data access patterns if ALU bound"
+
+THREAD TO WORK MAPPING
+----------------------
+ - Not pixel to thread -> too much ALU under utilization after rays hit surf
+ - Rather fixed distance estimator iterations per thread
+
+SHADER
+------
+ - Fetch ray
+ - For fixed traversal iterations
+    - Distance estimation
+    - Walk forward
+    - If ray hit (aka "close enough")
+       - Store result
+       - Start on another ray
+
+--------------------------------------------------------------------------------
+                                  BREAD CRUMBS [e]
+--------------------------------------------------------------------------------
+
+  "When working in parallel, don't wait, if data isn't ready, just compute it"
+
+TRAVERSAL ORDERING
+------------------
+ - Order rays by parent cones first in space filling curve,
+
+     0 -> 12 -> 4589 -> and so on
+          34    67ab
+                cdgh
+                efij
+
+ACCELERATION
+------------
+ - Cones end by writing their stop depth into memory.
+ - Child cones will check for completed parent result,
+   otherwise will start from scratch.
+
+--------------------------------------------------------------------------------
+                                 IN THE NOISE [e]  
+--------------------------------------------------------------------------------
+
+                   "Degrade to pleasing noise when out of time"
+
+TRADE RELATIVELY FIXED TIME FOR NOISE
+-------------------------------------
+ - Fixed maximum DE iterations -> not always going to traverse full scene
+ - Ok fine, lets not require tracing all rays
+
+RAY ORDERING FOR FULL RESOLUTION
+--------------------------------
+ - Fill ordering,
+
+    0 7 E 5   0 . . .   0 7 . 5   0 7 . 5
+    C 3 A 1   . 3 . 1   . 3 . 1   . 3 A 1
+    8 F 6 D   . . . .   . . 6 .   8 . 6 .
+    4 B 2 9   . . 2 .   4 . 2 .   4 B 2 9
+
+ - Pattern defined by math (fast but perhaps not ideal)
+ - Each frame gets different fill order (holes not always in same place)
+
+
+================================================================================
+                FILTERED RECONSTRUCTION FROM DIFFERENT DOMAIN [f]
+================================================================================
+
+360 DEG FISHEYE EXAMPLE
+-----------------------
+ - Rendering into an octahedron map
+ - Each sample writes out {x,y} projected screen position
+ - Distortion finds the nearest texel in the octahedron map
+ - Then samples a neighborhood around the texel
+ - Then uses the difference in pixel center and sample {x,y} to filter
+ - Reprojection samples from the warped reconstructed frame
+ - Ideally adjust the filter kernel based on domain distortion
+    - Showing simple adjustment of kernel size here (anisotropic is better)
+</pre>
+
+</div></body></html>
+
+
+
