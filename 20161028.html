@@ -1,0 +1,56 @@
+<html><head><link rel="stylesheet" href="style.css"></head><body><div class="page">
+<h1>20161028 - Rotated View Vs Rotated Sample Grid In Pixel</h1>
+<br>
+<pre>
+Sorry no images as I lost them when minus went down a long time back.
+Attempting to rederive the geometry of my prior work here
+while out of town without access to the original work.
+
+EDITS: First posting was math and geometry fail, worked on too close to sleeping.
+       Fixed on 20161029.
+
+Terms,
+  SGSSAA = Sparse Grid Super-Sample Anti-Aliasing (shading on MSAA pattern)
+
+Comparison is between,
+  (1.) 2xSGSSAA (super-sample the 2xMSAA pattern)
+  (2.) A non-MSAA rotated view with slightly less shaded fragments
+
+2xSGSSAA has exactly 2 shaded fragments per output pixel.
+Will have at best when resolved, 2 steps on any edge gradient with a box filter.
+Align the 2xMSAA pattern with the corners of a pixel provides the following.
+Which shows how 2xMSAA pattern only gets 2 steps on any vertical or horizontal edge,
+  
+  +------------(X)
+  |             |
+  |     (X)     |
+  |             |
+ (X)------------+
+
+
+Now lets compare to a rotated view without MSAA but with lightly less shaded fragments.
+
+For a span of {2,1} output pixels, run {3} input pixels on the hypotenuse (rotated view).
+This provides for a sqrt(5)/3 = 0.745 input width pixel (compared to a 1.0 output width pixel).
+Which is 5/9 = 0.555 in area (compared to a 1.0 area output pixel).
+
+  +--------+-------(X)
+  |        | (X)    |
+  |    (X) |        |
+ (X)-------+--------+
+
+For 1920x1080 = 2073600 output pixel area, 
+  roughly 2073600/0.555 = 3732480 input fragments are needed 
+  (9/5 = 1.8x the fragments).
+
+The 2xSGSSAA case renders 2.0x the fragments for a 2-step gradient.
+This rotated view renders 1.8x the fragments for a 3-step gradient.
+And the rotated view not using MSAA will render and "resolve" faster.
+
+Note both cases I'd be "resolving" using a larger-than-pixel-width kernel.
+With a filter kernel which is not the worst case box filter.</pre>
+</div></body></html>
+
+
+
+
