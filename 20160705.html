@@ -1,0 +1,60 @@
+<html><head><link rel="stylesheet" href="style.css"></head><body><div class="page">
+<h1>20160705 - CPU Threading to Hide Pipelining</h1>
+<br>
+
+
+If a CPU has a 4 stage pipeline, would be nice to have 4 CPU threads round robin scheduled to ensure pipeline delays for {memory, alu, branches, etc} do not have to be programmer visible,
+and to avoid complexities such as forwarding.
+<br>
+<br>
+According to docs, 
+Xilinx 7-series <a href="http://www.xilinx.com/support/documentation/user_guides/ug479_7Series_DSP48E1.pdf">DSPs</a> need a 3 stage pipeline for full speed MAC, 
+and <a href="www.xilinx.com/support/documentation/user_guides/ug473_7Series_Memory_Resources.pdf">BRAMs (Block RAMs)</a> need 1 cycle delay for reads.
+<br>
+<br>
+Working from high level constraints, I'm planning using the following for the CPU-side of the project,
+<br>
+<br><tt>
+16-bit or 18-bit machine<br>
+1 DSP<br>
+X BRAMs of Instruction RAM (2 ports, read or write for either)<br>
+Y BRAMs of Data RAM (2 ports, read or write for either)
+</tt><br>
+<br>
+Which suggests the following 4 stage pipeline (with 4 CPU threads running in parallel, one on each pipeline stage),
+<br>
+<br><tt>
+[0]<br> 
+Instruction BRAM Read -> Instruction BRAM Registers<br>
+DSP MUL -> DSP {M,C} Registers (from prior instruction)<br>
+<br>
+[1]<br>
+Instruction Decode<br>
+DSP ALU -> DSP {P} Registers (from prior instruction)<br>
+<br>
+[2]<br>
+Data BRAM Write(s) (results from prior instruction)<br>
+Data BRAM Read(s) -> Data BRAM Registers<br>
+<br>
+[3]<br>
+DSP Input -> DSP {A,B,D} Registers
+</tt><br>
+<br>
+
+With an ISA which can do something as complex as the following (below) in one instruction.
+A focus on instruction forms which can leverage both ports on the Instruction BRAMs (opcode and separate optional immediate),
+as well as both ports on the Data BRAMs.
+Using dedicated address registers to provide windows into the Data BRAMs for immediate access instead of a conventional register file,
+and leveraging a special high-bit-width accumulator to maintain precision of intermediate fixed-point operations.
+<br>
+<br><tt>
+[addressRegister[2bitImmediate]^nbitImmediate] = accumulator;<br>
+accumulator = [addressRegister[2bitImmediate]^nbitImmediate]] OP 18bitImmediate;
+</tt><br>
+
+
+
+</div></body></html>
+
+
+
