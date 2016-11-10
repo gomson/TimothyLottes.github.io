@@ -1,0 +1,51 @@
+<html><head><link rel="stylesheet" href="style.css"></head><body><div class="page">
+<h1>20160721 - Why Motion Blur Trivially Breaks Tone-Mapping - Part 1</h1>
+<br>
+
+
+<i>Some food for visual thought ...</i>
+<br>
+<br>
+You have a scene with a bunch of High Dynamic Range (HDR) light sources, or bright secondary reflections.
+Average Picture Level (APL) of the scene as displayed is relatively low, which is standard practice and expected behavior for displayed HDR scenes.
+Because the display cannot output the full dynamic range of the scene, the scene is tone-mapped before display, 
+and thus the groups of pixels representing highlights appear not as bright as they should.
+<br>
+<br>
+Now the camera moves, and the scene gets motion blur applied in engine prior to tone-mapping.
+All the sudden the scene gets brighter.
+The APL increases.
+In fact the larger the motion, the brighter the scene gets.
+<br>
+<br>
+<i>You, yes you the reader, have seen this before in many games. And technically speaking the game engine isn't doing anything wrong.</i>
+<br>
+<br>
+What is happening is those small bright areas of the scene, get blurred, 
+distributing their energy over more pixels.
+Each of these blurred pixels have less intensity than the original source. 
+As the intensity lowers, it falls more away from the aggressive areas of highlight compression,
+approaching tonality which can be reproduced by the display.
+So the APL increases, because less of the scene's output energy is getting limited by the tone-mapper.
+<br>
+<br>
+<i>The irony in this situation is that as motion and motion blur increases, 
+the scene is actually getting closer to it's correct energy conserving visual representation as displayed.</i>
+<br>
+<br>
+Note the same effect applies as more of the scene gets out of focus during application of Depth of Field.
+
+
+
+
+ 
+
+ 
+
+
+
+
+</div></body></html>
+
+
+
