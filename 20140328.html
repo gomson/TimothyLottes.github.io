@@ -1,0 +1,39 @@
+<html><head><link rel="stylesheet" href="style.css"></head><body><div class="page">
+<h1>20140328 - Related to Filtering for VR</h1>
+<br>
+
+Ideas for high quality VR warp and reconstruction filtering for higher-end GPUs:<br>
+<br>
+(1.) Instead of applying a resolve or filter before the warp, apply during the warp.<br>
+<br>
+(2.) Starting with a ray-tracing example with temporal changing stratified sampling. For all samples before the warp, use a pre-pass to compute then store out the screen position for the sample after the warp. Then when filtering for the warp, fetch this position per sample in the reconstruction filter and use it to compute the weighting for the filter kernel. Weight is a function of distance the post-warp sample position to the center of the back-buffer pixel. Note one can also rotate and scale the offset before computing the distance (and weight) to reshape a circle kernel into an ellipse aligned to the gradient of curvature of the warp. The core optimization here is to avoid doing the warp computation many times per output pixel.<br>
+<br>
+(3.) Post warp screen position output needs sub-pixel precision for quality filtering. If using FP16 to store position, make sure to use a signed pixel offset with {0,0} at center of the eye. This doubles precision, and places the high precision area in the center of the eye's view where it is needed the most. Remember FP16 represents -2048 to +2048 exactly, but -4096 to +4096 with a gap of 2. So process left and right eyes separately when filtering. This way the worst precision which is 1/2 out from the center of each view, is steps of 960/4096 pixels for the DK2.<br>
+<br>   
+(4.) The reconstruction filter can do the inverse warp computation once to get a location in the source framebuffer, then use fixed immediate offsets from that position to do fast sampling of a large fixed pattern. Must use more than four samples. Beginning with 12 samples is a good starting point.<br>
+<br>
+(5.) For raster based engines with fixed sample positions, warp and kernel weights can be pre-computed. Per back-buffer pixel, compute the source framebuffer pattern center offset. Then store out weights for all the samples in the pattern. These weights will vary per pixel, and can even be compressed. Compute the maximum weight per sample in the fixed pattern for all pixels in the back buffer. Use this per sample maximum as a constant to scale the sample weight before packing.<br>
+<br>
+(6.) The Oculus DK1 can support higher resolution in X by computing filtering weights separate for {red,green,blue}. Not sure what to do yet with the display of the DK2.<br>
+<br>
+(7.) Fixing for chromatic aberration requires computing separate filter weights for {red,green,blue}. However towards the center of the eye, the sample pattern can remain constant. Can use different shader source based on distance of a screen tile from the eye. Tiles at the ends of the screen for instance need different sample patterns.<br>
+<br>
+(8.) If ray tracing (or ray marching) with the Oculus (I ray march at home), use temporally stratified sampling which is evenly distributed in the warped space. Do not just shoot rays in a regular grid.<br>
+<br>
+(9.) If forward rendering, especially if on NVIDIA hardware, instead of rendering higher resolution, render with MSAA and some amount of super-sampling on. In OpenGL this can be done using the glMinSampleShadingARB() extension. This can enable for instance 4xMSAA shading at 2 samples per pixel, or 8xMSAA shading at 2 or 4 samples per pixel. The end result of this is a better sample pattern distribution for the resolve filter. Also it enables a reduction in shading rate compared to regular grid super-sampling.<br>
+<br>
+(10.) It is possible to up-sample during the reconstruction filter on devices which cannot do super-sampled shading at good frame rates. In this case it is still a good idea to use the MSAA trick for a better base sampling pattern.<br>
+<br>
+(11.) Temporal filtering is very hard and beyond the scope of this blog post. It is possible to use temporal filtering for either jittered AA or noise reduction with stratified sampling and a ray traced (or marched) engine.<br>
+<br>
+(12.) Crazy optimization which I haven't tried yet. Could work with a pair (or more) of output pixels during the reconstruction filtering pass. Have the pair share the same slightly larger fixed pattern of input samples. This better amortizes the cost of the inverse warp computation, and the cost of fetching all the samples. Might increase the number of samples/pixel which can be done in the same amount of time. Output of the pixel shader in this case would be surface stores instead of ROP.<br>
+<br>
+(13.) Continuing that line of thought, in the pre-computed weights situation, one can reuse the weights for both the left and right eye. In this case, a pixel's pair is the mirror across the center of the back-buffer. Surface stores in this case would be coherent...
+
+
+
+
+</div></body></html>
+
+
+
