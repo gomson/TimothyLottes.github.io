@@ -1,0 +1,38 @@
+<html><head><link rel="stylesheet" href="style.css"></head><body><div class="page">
+<h1>20150423 - Source-Less Programming : 3</h1>
+<br>
+
+<b>Annotation Encoding</b>
+<br>
+Refined from last post, two 32-bit annotation words per binary image word,<br>
+<br>
+<tt>FEDCBA9876543210FEDCBA9876543210<br>
+================================<br>
+00EEEEEEDDDDDDCCCCCCBBBBBBAAAAAA - LABEL : 5 6-bit chr string ABCDE</tt><br>
+<br>
+<tt>FEDCBA9876543210FEDCBA9876543210<br>
+================================<br>
+..............................00 - DAT : hex data<br>
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA01 - GET : get word from address A*4<br>
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA02 - ABS : absolute address to A*4<br>
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA03 - REL : relative address to A*4</tt><br>
+<br>
+Going to switch to just 2 lines per word displayed in the editor,
+Only DAT annotations show hex value, other types show LABEL of referenced address
+in the place of the hex value. So no need for an extra note.
+In practice will be using some amount of binary image memory to build up 
+a dictionary of DAT words representing all the common somewhat forth like opcodes,
+then GET words in the editor to build up source.<br>
+<br>
+Need to redo the bootloader from floppy to harddrive usage,
+and switch even the bootloader's 16-bit x86 code to 32-bit aligned
+LABEL'ed stuff so the final editor can edit the bootloader.
+Prior was avoiding manually assembling the 16-bit x86 code in the boot loader,
+but might as well ditch NASM and use something else to bootstrap everything.
+
+
+
+</div></body></html>
+
+
+

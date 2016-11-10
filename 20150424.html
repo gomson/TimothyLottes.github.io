@@ -1,0 +1,65 @@
+<html><head><link rel="stylesheet" href="style.css"></head><body><div class="page">
+<h1>20150424 - Source-Less Programming : 4</h1>
+<br>
+
+<i>Still attempting to fully vet the design
+before the bootstrap reboot...</i><br>
+<br>
+DAT words in the edit image need to maintain
+their source address in the live image
+This way on reload the live data can be copied over,
+and persistent data gets saved to disk.
+DAT annotations no longer have 30 bits of free space,
+instead they have a live address.
+When live address is zero. then DAT words
+won't maintain live data.
+This way read-only data can be self-repairing
+(as long as the annotations don't get modified).
+Going to use a different color for read-only DAT words.
+New persistent data DAT words
+will reference their edit-image hex value
+before reload (then get updated to the live address).
+<br>
+<br>
+REL words always get changed on reload (self repairing).
+No need to keep the live address.
+REL is only used for relative branching x86 opcodes.
+Don't expect to have any run-time (non-edit-time)
+self-modifying of relative branch addresses.
+Given that branching to a relative branch opcode immedate
+is not useful, the LABEL of a REL word is only useful
+as a comment.
+<br>
+<br>
+GET words also get changed on reload (self repairing).
+GET is only designed for opcodes and labeled constants.
+GET words will often be LABELed as a named branch/call target.
+Been thinking about removing GET, and instead making a new
+self-annotating word (display searches for a LABELed DAT
+word with the same image value, then displays the
+LABEL instead of HEX).
+This opens up the implicit possibility of mis-annotations.
+Would be rare for opcodes given they are large 32-bit values.
+But for annotating things like data structure immediate offsets,
+this will be a problem
+(4 is the second word offset in any structure).
+<br>
+<br>
+ABS words always get changed on reload (self repairing).
+ABS words are targets for self-modifying code/data,
+so they also need LABELs.
+Reset on reload presents a problem in that
+ABS cannot be used to setup persistent data
+unless that persistent data is constant
+or only built/changed in the editor.
+But this limitation makes sense in the context
+that ABS addresses in live data structures
+can get invalidated by moving stuff around in memory.
+The purpose of ABS is edit-time relinking.
+<br>
+
+
+</div></body></html>
+
+
+

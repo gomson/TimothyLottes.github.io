@@ -1,0 +1,82 @@
+<html><head><link rel="stylesheet" href="style.css"></head><body><div class="page">
+<h1>20150422 - Source-Less Programming : 2</h1>
+<br>
+
+<i>Continuing with what will either be an insanely great or amazingly stupid project...</i><br>
+<br>
+Making slow progress with bits of free-time after work, far enough thinking through the full editor design to continue building. Decided to ditch 64-bit long mode for 32-bit protected mode. Not planning on using the CPU for much other than driving more parallel friendly hardware... so this is mostly a question of limiting complexity.
+Don't need 16 registers and the REX prefix is too ugly for me to waste time on any more.
+The 32-bit mode uses much more friendly mov reg,[imm32] absolute addressing,
+also with ability to use [EBP+imm32] without an SIB byte (another thing I mostly avoid).
+Unfortunately still need relative addresses for branching.
+32-bit protected mode thankfully doesn't require page tables unlike 64-bit long mode.
+Can still pad out instructions to 32-bits via reduntant segment selectors.<br>
+<br>
+<b>Source-Less Analog to Compile-Time Math?</b>
+<br>
+Compile-time math is mostly for the purpose of self-documenting code: 
+"const uint32_t willForgetHowICameUpWithThisNumber = startHere + 16 * sizeof(lemons);".
+The source-less analog is to write out the instructions to compute the value,
+execute that code at edit time, then have anotations 
+for 32-bit data words which automatically pull from the result when building 32-bit words for opcode immediates for the new binary image.<br>
+<br>
+<b>Reduced Register Usage Via Self Modifying Code</b>
+<br>
+Sure, kills the trace cache in two ways, what do I care.
+Sometimes the easist way to do something complex is to 
+just modify the opcode immediates before calling into the function...
+<br>
+<br>
+<b>What Will Annotations Look Like?</b>
+<br>
+The plan so far is for the editor to display a grid of 8x8 32-bit words.
+Each word is colored according to a tag annotation
+{data, absolute address, relative address, pull value}.
+Each word has two extra associated annotations {LABEL, NOTE}.
+Both are 5 6-bit character strings.
+Words in grid get drawn showing {LABEL, HEX VALUE, NOTE} as follows,<br>
+<br>
+<tt>
+LABEL<br>
+00000000<br>
+NOTE</tt><br>
+<br>
+The LABEL provides a name for an address in memory (data or branch address).
+Words tagged with absolute or relative addresses or pull value show in the NOTE field 
+the LABEL of the memory address they reference.
+Words tagged with data use NOTE to describe the opcode, or the immediate value.
+Editor when inserting a NOTE can grab the data value from other words
+with the same NOTE (so only need to manually assemble an opcode once).
+Edit-time insert new words, delete words, and move blocks of words, 
+all just relink the entire edit copy of the binary image.
+ESC key updates a version number in the edit copy,
+which the excuting copy sees triggering it to replace itself
+with the edit copy.
+<br>
+<br>
+<b>Boot Strapping</b>
+<br>
+I'm bootstrapping the editor in NASM in a way that I'll be able 
+to see and edit later at run-time.
+This is a time consuming process to get started 
+because instead of using NASM to assemble code,
+I need to manually write the machine code to get the 32-bit padded opcodes.
+Once enough of the editor is ready, 
+I need a very tiny IDE/PATA driver to be able to store to the disk image.
+Then I can finish the rest of the editor in the editor.
+Then I'll also be self hosted outside the emulator 
+and running directly on an old PC with a non-USB keyboard,
+but with a proper PCIe slot...<br>
+
+
+
+
+
+
+
+
+
+</div></body></html>
+
+
+
