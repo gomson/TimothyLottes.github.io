@@ -1,0 +1,136 @@
+<html><head><link rel="stylesheet" href="style.css"></head><body><div class="page">
+<h1>20160731 - Vulkan From Scratch Part 2</h1>
+<br>
+
+<i>Continuing posting when I find some time to work on the "from-scratch" Vulkan engine...</i>
+<br>
+<br>
+<b>Review From Last Time</b>
+<br>
+Bringing up on Windows first this time, will get to Linux later.
+Got basic system interface without non-system libraries on Windows.
+Still have {gamepad, audio, usb} interfaces to bring up.
+Got basic Vulkan window rendering full-screen compute PSO into back-buffer.
+Switched to always using UNDEFINED layout for source for back buffer to remove a permutation in the command buffer baking.
+Have new simplified rapid prototyping working.
+<br>
+<br>
+<b>Mechanics of Batch File</b>
+<br>
+No "make" system, just a simple shell script to run the development cycle per platform.
+I include the source of all the helper programs inside the single source file,
+then comment them out in the shell script unless I need to recompile them.
+Using #define's to control what actually gets compiled.
+Two helpers. The "glsl.exe" takes the single source file and prefixes with the "#version 450" to use as GLSL shader source, outputs to "tmp.comp".
+Then "head.exe" converts the "comp.spv" output of "glslangValidator.exe" to a header file.
+Arguments of both are the shader ID which I use a two digit number for.
+Shell script compiles shaders, cleans up temporaries, compiles the program (aka "rom.exe"), 
+runs the program, and depending on exit code relaunches or quits the shell script.
+Script below has only one shader currently,
+<br>
+<br>
+<pre>@echo off
+@rem cl /nologo /O1 /Oi /Os /Oy /fp:fast /DCPU_ /DGLSL_ /Feglsl.exe /Tprom.c
+@rem cl /nologo /O1 /Oi /Os /Oy /fp:fast /DCPU_ /DHEAD_ /Fehead.exe /Tprom.c
+:loop
+glsl.exe 00
+glslangValidator.exe -V tmp.comp
+head.exe 00
+del tmp.comp
+del comp.spv
+cl /nologo /O1 /Oi /Os /Oy /fp:fast /DCPU_ /DGAME_ /Ferom.exe /Tprom.c
+rom.exe
+if /i %ERRORLEVEL% equ 0 goto :eof
+goto :loop</pre>
+<br>
+<b>Mechanics of Graphics Abstraction Interface</b>
+<br>
+This should be thought of as work in progress as it will change during bring up.
+I'm posting this because it shows just how simple a Compute-Generates-Graphics style engine can be in Vulkan.
+There are exactly 2 Descriptor Sets, one for the even and one for the odd frames.
+They contain everything, so no need to ever think about "binding" anything.
+
+<br>
+<br>
+<pre>// ROUGH IDEA OF API
+
+// Initialize the Vulkan interface.
+// Inputs are,
+//  (1.) Descriptor pool setup.
+//  (2.) Descriptor set layout.
+{ S_ VkDescriptorPoolSize count[1]={
+   { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,2 } };
+  S_ VkDescriptorSetLayoutBinding bind[1]={
+   { 0,VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,1,VK_SHADER_STAGE_COMPUTE_BIT } }; 
+  GfxInit(count,1,bind,1); }
+
+// Used to compile PSOs (this eventually will be parallelized when necessary).
+// Specialization constants.
+// This example passes in the size of the frame buffer.
+F4 con[]={ F4_(wndR->x), F4_(wndR->y) };
+// Include the shader source files.
+#include "s00.h"
+// Generate PSOs.
+U8 pso[1];
+pso[0]=GfxPso(s00_,sizeof(s00_),con,sizeof(con)>>2);
+
+// Build the baked command buffers.
+// Leaving a lot out here, will return later when this is cleaned up more.
+U8 cmd=GfxBegin(cmdIdx);
+...
+GfxEnd(cmd);
+
+// Loop forever replaying the groups of {even, odd} command buffers.
+GfxLoop();</pre>
+<br>
+
+
+<b>Specialization Constants</b>
+<br>
+Absolutely great feature to have in the API.
+Setup constants which can have overrides set at PSO compile-time.
+Enables factoring out evaluation of various expressions to compile-time, setting array sizes, etc.
+Perfect for my setup, as I can just pass in frame size (and later other important things).
+Translates to this in the current dummy bring-up shader,
+<br>
+<br>
+<pre> // Part of what I use for cleaner types...
+ #define F4 float
+ #define F4x2 vec2
+ #define F4x3 vec3
+ #define F4x4 vec4
+ ...
+
+ // Specialization constants with default values.
+ layout(constant_id=0) const F4 SCRX_=1920.0;
+ layout(constant_id=1) const F4 SCRY_=1080.0;
+
+ // Bind "everything", which thus far is just the back buffer.
+ layout (set=0,binding=0,rgba8) writeonly uniform image2D img[1];
+
+ // Showing a specific shader, in this case the dummy shader for bring up.
+ #ifdef S00_
+  layout (local_size_x=16,local_size_y=16) in;
+  void main() { imageStore(img[0],S4x2(gl_GlobalInvocationID.xy),
+   F4x4(F4(gl_GlobalInvocationID.x)*(1.0/SCRX_),F4(gl_GlobalInvocationID.y)*(1.0/SCRY_),1.0,1.0)); }
+ #endif</pre>
+<br>
+
+<b>What's Next</b>
+<br>
+Setting up a double buffered SSBO for the even/odd frames for game state.
+Each frame reads from prior frame game state and builds the new frame game state.
+Everything updated GPU-side via compute dispatches.
+Yes burning a whole wave to do some scalar processing once and a while (like computing new player position and view-matrix, etc),
+but in practice the scalar work is in the noise in terms of run-time, so it doesn't matter.
+<br>
+<br>
+Then on to simple CPU->GPU uploads (for late latched IO) and GPU->CPU downloads (for saving current state, etc)...
+
+
+
+
+</div></body></html>
+
+
+
