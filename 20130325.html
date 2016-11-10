@@ -1,0 +1,14 @@
+<html><head><link rel="stylesheet" href="style.css"></head><body><div class="page">
+<h1>20130325 - Understanding WIN32 GetRawInputBuffer()</h1>
+<br>
+
+This is a re-post, for some reason bringing back the prior link is no longer working, have not figured out why yet.
+Direct link to docs: <a href="http://msdn.microsoft.com/en-us/library/windows/desktop/ms645595(v=vs.85).aspx">GetRawInputBuffer()</a>.
+<br />
+<br />
+<b>On XP at least (have not tested Vista/Win7/Win8 yet),</b><br />The entire RawInput system is built on-top of WM_INPUT events in the standard Window's message queue. When processing messages, WM_INPUT messages must not be removed in order to use GetRawInputBuffer() as GetRawInputBuffer() will use then remove those events. In my usage case I'm doing this to drain out the message queue without disrupting GetRawInputBuffer(), and relying on the fact that for events like WM_ACTIVATEAPP (ALT+TAB), PeekMessage() automatically calls the WinProc() without returning the message to the application directly,<br /><br><pre>while(1) {<br />  if(PeekMessage(&msg, 0, 0, WM_INPUT-1, PM_NOYIELD | PM_REMOVE) == 0) break;<br />  DefWindowProc(msg.hwnd, msg.message, msg.wParam, msg.lParam); }<br />while(1) {<br />  if(PeekMessage(&msg, 0, WM_INPUT+1, 0xFFFFFFFF, PM_NOYIELD | PM_REMOVE) == 0) break;<br />  DefWindowProc(msg.hwnd, msg.message, msg.wParam, msg.lParam); }</pre><br /><b>GetRawInputBuffer()</b><br />Docs on GetRawInputBuffer() are confusing, here is a less confusing example,<br /><br /><pre>// Some temp global buffer, 1KB is overkill.<br />static uint64_t rawBuffer[1024/8];<br />...<br />// Then in some function,<br />const uint32_t bytes = sizeof(rawBuffer);<br />// Loop through reading raw input until no events are left,<br />while(1) {<br />  // Fill up buffer,<br />  int32_t count = GetRawInputBuffer((PRAWINPUT)rawBuffer, &bytes, sizeof(RAWINPUTHEADER));<br />  if(count <= 0) return;<br />  ...<br />  // Process all the events, <br />  const RAWINPUT* restrict raw = (const RAWINPUT* restrict) rawBuffer;<br />  while(1) {<br />    // Process raw event.<br />    ...<br />    // Goto next raw event.<br />    count--;<br />    if(count <= 0) break;<br />    raw = NEXTRAWINPUTBLOCK(raw); } }</pre>
+
+</div></body></html>
+
+
+
