@@ -1,0 +1,360 @@
+<html><head><link rel="stylesheet" href="style.css"></head><body><div class="page">
+<h1>20040101 - Simple IP Reference</h1>
+<br>
+<pre>________________________________________________________________
+
+     SIMPLE IP REFERENCE - USE RFC'S FOR FULL REFERENCE
+
+
+ This is a minimal reference for programming a simple operating
+ system's internet related code. Note network byte order is big
+ endian (most significant byte first), keep this in mind when
+ sending multibyte sized numbers. This assumes some basic
+ knowledge of IP networking, and is not a complete reference.
+
+________________________________________________________________
+SMTP - SIMPLE MAIL TRANSPORT PROTOCOL
+
+ In progress... 
+
+
+________________________________________________________________
+POP3 - POST OFFICE PROTOCOL
+
+ Access a maildrop via TCP port 110. The following are used to
+ describe,
+ 
+  [optional]  -> optional arguments
+  (grouping)  -> used only to describe repeating 
+  ...         -> repeats last grouping
+  <SPACE>     -> decimal 32
+  <DOT>       -> decimal 46
+  <LF>        -> decimal
+  <CR>        -> decimal 
+  "text"      -> text to be sent as is
+ 
+ The formatting is as follows,
+ 
+  client sends: (command)...
+  command: keyword [(<SPACE> argument)...] <CR> <LF>
+  keywords: are 3-4 characters long and case insensitive
+  arguments: are up to 40 characters long
+
+  server sends:     (responce)...
+  responce:         first [(extra)... <DOT> <CR> <LF>]
+  first:            status_indicator <SPACE> keyword 
+                    [(<SPACE argument)...] <CR> <LF>
+  extra:            data <CR> <LF>
+  first:            may be up to 512 characters long
+  status_indicator: will be "+OK" or "-ERR" 
+                    always in upper case
+  data:             if first character is <DOT> then it 
+                    will actually be <DOT> <DOT> 
+
+ The connection happens in states,
+ 
+   client: connects to server
+   server: "+OK" SPACE "POP3" safe_to_ignore_data <CR> <LF>  
+
+  AUTHORIZATION STATE
+   The client needs to identify itself before accessing mail.
+   
+   client: "USER" <SPACE> name <CR> <LF>
+   server: responds if good, "+OK" safe_to_ignore_data <CR> <LF>
+   server: responds if bad, "-ERR" safe_to_ignore_data <CR> <LF>
+
+   then,
+
+   client: "PASS" <SPACE> password <CR> <LF>
+   server: responds if good, "+OK" safe_to_ignore_data <CR> <LF>
+   server: responds if bad, "-ERR" safe_to_ignore_data <CR> <LF>
+   
+   loop if bad
+
+  TRANSACTION STATE 
+   In this state the mailbox is locked, all messages get
+   assigned a decimal number starting with "1" and going in
+   incremental order.  All messages are flagged as not deleted.
+   
+   client: "STAT" <CR> <LF>
+   server: "+OK" <SPACE> number_of_messages <SPACE> 
+           mail_size_in_bytes safe_to_ignore_data <CR> <LF>
+   server: responds if bad, "-ERR" safe_to_ignore_data <CR> <LF>
+   server: does not count deleted messages in the total
+   
+   client: "LIST" [<SPACE> message_number] <CR> <LF>
+   server: for message_number option, 
+           "+OK" <SPACE> size_of_message safe_to_ignore_data 
+           <CR> <LF>
+   server: otherwise gives multiline responce,
+           "+OK" safe_to_ignore_data <CR> <LF>
+	   [(message_number <SPACE> message_size safe_to_ignore 
+           <CR> <LF>)...] <DOT> <CR> <LF>
+   server: responds if bad, "-ERR" safe_to_ignore_data <CR> <LF>
+   server: does not list deleted messages	   
+	   
+   client: "RETR" <SPACE> message_number <CR> <LF>
+   server: "+OK" safe_to_ignore <CR> <LF>
+           lines_of_message_remember_special_dot_dot_encoding
+	   <DOT> <CR> <LF>
+   server: responds if bad, 
+           "-ERR" safe_to_ignore_data <CR> <LF>
+   server: should not send a deleted message
+	      	   
+   client: "DELE" <SPACE> message_number <CR> <LF>
+   server: marks message as deleted, 
+           "+OK" safe_to_ignore <CR> <LF>
+   server: responds if bad, 
+           "-ERR" safe_to_ignore_data <CR> <LF>
+   server: will respond in error if already deleted
+   server: does not actualy delete message until update state
+  
+   client: "NOOP" <CR> <LF>
+   server: "+OK" <CR> <LF>
+
+   client: "RSET" <CR> <LF>
+   server: messages set not deleted, 
+           "+OK" safe_to_ignore <CR> <LF>
+   server: responds if bad, "-ERR" 
+           safe_to_ignore_data <CR> <LF>
+
+   client: "QUIT" <CR> <LF>
+   server: changes to update state
+   
+  UPDATE STATE
+   server: "+OK" safe_to_ignore_data <CR> <LF>
+   server: responds if bad, "-ERR" 
+           safe_to_ignore_data <CR> <LF>
+   server: will perminatly delete messages marked as deleted
+
+ Reported email message size may be different than actual sent
+ size of message, the <DOT> characters should not be counted
+ twice even though they are sent that way.
+
+
+________________________________________________________________
+SLIP - SERIAL LINE IP
+
+ Use 1006 byte datagrams (not including the adjusted characters
+ below). To send a packet just send data. If data byte is 192,
+ then send 219 and 220 instead. If data byte is 219, then send
+ 219 and 221 instead. When the last byte of the packet is sent
+ then send 192.
+
+ 
+________________________________________________________________
+ETHERNET
+
+ Ethernet Header
+
+  offset bytes meaning
+  0      6     destination 48bit Ethernet MAC
+  6      6     source 48bit Ethernet MAC
+  12     2     type, ARP=0x806, IP=0x800
+  14           total size (offset of IP header)
+
+ When get IP from network, save source MAC to IP mapping if
+ source IP is on the local network (hence the requirement of a
+ netmask). When put IP to network, set destination MAC to
+ correct MAC for destination IP (if on local network) or
+ address of default router (not on local network). 
+
+ Ethernet ARP (Address Resolution Protocol) Header
+ 
+  offset bytes meaning
+  14     2     hardware type: 1=ethernet
+  16     2     protocol: IP=0x800
+  18     1     hardware length: 6 (for 48bit Ethernet MAC)
+  19     1     protocol length: 4 (for 32bit IP)
+  20     2     opcode: request=1, reply=2
+  22     6     source MAC
+  28     4     source IP 
+  32     6     destination MAC
+  38     4     destination IP
+
+ These packets are used to resolve IP addresses into MAC
+ addresses. After initial resolution the translation should be
+ cached. Probably should use 20 minutes as default for ARP
+ cache entry timeout (this is BSD default). If ARP request, and
+ destination IP equals host IP, then send reply with source set
+ to host info and destination set to source info from request.
+ To send an ARP request set ethernet header destination MAC to
+ all 0xFF, ARP header destination MAC to all 0x00, and set
+ source to host. 
+
+
+________________________________________________________________
+DNS HOST NAME TO IP ADDRESS RESOLUTION  
+
+ DNS uses UDP packets at port 53. This only gives the minimal
+ amount of into to write a simple resolver. DNS messages 
+ encode host names with a special format, host dot seperated
+ substring,
+ 
+  offset bytes meaning
+  0      1     n, size of string or 0 for end of string
+  1      n     the characters for the string (skips .)
+  
+ This may be repeated multiple times to encode a string
+ with many '.' characters. So to encode "this.name.com",
+ 
+  4,'this',4,'name',3,'com',0, 
+ 
+ DNS Message Header
+  offset bytes meaning
+  0      2     id (could be used for resolver table entry)
+  2      1     flags
+               0x80 response
+	       0x01 query
+  3      1     flags
+	       0xf error mask
+	       0x3 error name 
+	       0x0 error none
+  4      2     number of questions, 1
+  6      2     number of answers, 0 for query
+  8      2     number of authority, 0
+  10     2     number of additional, 0
+  12           total size
+               for query
+	        special formated host name follows
+	       for request
+	        special formated host name follows
+		then DNS answer messages follows
+  
+ DNS Answer Message First Part (2 options)
+  0      1     c0 (compressed record)
+  1      1     skip
+  
+  or a DNS encoded host name
+ 
+ DNS Answer Message Second Part
+  offset bytes meaning
+  0      2     type, 1
+  2      2     class, 1
+  4      2     time to live
+  6      2     length, 4
+  8      4     IP
+  12           total size
+
+ To query for IP address for hostname, the hostname must be
+ encoded after the message header in the special dot broken
+ encoding, followed by the following sequence of bytes:
+ 0,1,0,1. So to encode "this.name.com",
+ 
+  4,'this',4,'name',3,'com',0, 0,1,0,1
+  
+ When reading a DNS responce, and the second flag byte to error
+ mask to check for error. The question name is entered
+ immediately following the message header. To get to the
+ answers this name must be parsed by reading a number and then
+ skipping that number of characters, until the number read is
+ zero. You should probably check that the question matches the
+ hostname under question for security. The answers follow. The
+ answer may contain compressed name records or normal host name
+ records (with the dot broken encoding). Choose an answer with
+ a valid IP address.
+
+ 
+________________________________________________________________
+IP PACKETS
+
+ Offsets from Link Level Header (ethernet=14),
+
+ IP HEADER
+  offset bytes meaning
+  0      1     vhl
+  1      1     type of service
+  2      2     length of packet
+  4      2     ip id
+  6      2     ip offset 
+  8      1     time to live, set to maximum 255 hops
+  9      1     protocol, 1=ICMP, 6=TCP, 17=UDP
+  10     2     ip checksum
+  12     4     source ip address
+  16     4     destination ip address
+  20           total size
+
+ TCP HEADER 
+  offset bytes meaning
+  20     2     source port
+  22     2     destination port
+  24     4     sequence number
+  28     4     acknowledge number
+  32     1     tcp offset
+  33     1     flags
+  34     2     window
+  36     2     tcp checksum
+  38     2     urgp
+  40           total size
+
+
+________________________________________________________________
+ICMP - INTERNET CONTROL MESSAGE PROTOCOL
+ 
+ ICMP Header
+ 
+  offset bytes meaning
+  0      1     type (8=echo, 0=reply)
+  1      1     icode (0)
+  2      2     icmp checksum 
+  4      2     id (0 or number to help match echos and replies)
+  6      2     sequence number (0 or like id byte)
+  8            total size
+
+ This is only enough to do a ping. The ICMP checksum is the
+ 16bit one's complement of the one's complement of the sum of 
+ the ICPM message starting at the type byte. What ever data
+ sent after the ICMP header in a echo should be returned in the
+ reply.
+
+
+________________________________________________________________
+UDP - USER DATAGRAM PROTOCOL
+
+ UDP Header 
+ 
+  offset bytes meaning
+  0      2     source port
+  2      2     destination port
+  4      2     udp length (udp header + data)
+  6      2     udp checksum (use zero here when computing this)
+  8            total size
+
+ The UPD packet sits on top of the IP packet. The length for a
+ zero data size packet is 8. The checksum is the 16bit one's 
+ complement of the one's complement sum of a pseudo header of
+ information from the IP header, the UDP header, and the data 
+ padded with zeros if necessary to make a multiple of 2 bytes.
+ The pseudo header is as follows,
+   
+  offset bytes meaning
+  0      4     source IP address
+  4      4     destination IP address
+  8      1     zero
+  9      1     protocol (17 for UDP)
+  10     2     udp length
+
+ If the computed checksum is zero it is sent as all ones. An
+ all zero checksum means that there is no checksum.
+
+
+________________________________________________________________
+FTP - FILE TRANSFER PROTOCOL
+
+ Work in progress...
+
+
+________________________________________________________________
+TCP
+
+ Work in progress...
+
+
+
+________________________________________________________________
+</pre>
+
+</div></body></html>
+
+
+
