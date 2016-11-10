@@ -1,0 +1,96 @@
+<html><head><link rel="stylesheet" href="style.css"></head><body><div class="page">
+<h1>20160726 - On Killing WIN32?</h1>
+<br>
+
+Many years ago I used to be a dedicated reader of Ars, 
+but it slowly transitioned to something a little too biased for my taste,
+so I avoid it, but thanks to twitter, it is possible to get sucked into a highly controversial article:
+<a href="http://arstechnica.com/information-technology/2016/07/now-tim-sweeney-thinks-that-microsoft-will-use-windows-10-to-break-steam/">
+"Tim Sweeney claims that Microsoft will remove Win32, destroy Steam"</a>.
+<br>
+<br>
+
+My take on this is quite simple.
+
+Everyone in this industry who has lived long enough to have programmed in the C64 era,
+has witnessed a universal truth on every mass market platform: the freedom and access to the computer by the user or programmer
+is reduced annually at a rate which is roughly scaling with the complexity of the software and hardware.
+<br>
+<br>
+The emergent macro level behavior is undeniable.
+Human nature is undeniable.
+It is possible to continuously limit freedom 
+as long as it is done slowly enough such that it falls under the instantaneous tolerance to act on each micro-level regression of freedom.
+Or translation, humans are lazy, humans adapt fast, and humans don't live long.
+Each new generation lacks the larger perspective of the last, and starts ignorant of what had been lost.
+<br>
+<br>
+
+The reason why computers and freedom are so important 
+is that computers are on a crash course to continue deeper and deeper integration with our lives.
+I believe ultimately humans will transcend the limits of our biology,
+blurring the lines between the mind and machine.
+Seems rather important at that apex to have the individual freedoms we have today,
+the privacy of our thoughts, etc.
+<br>
+<br>
+
+In the short term as a developer
+I'm also somewhat concerned that the infants that will grow up to replace the generation I started in,
+will have the same opportunities I had, 
+the same ability to get access to the hardware,
+to have the freedom implement their dreams,
+and to if they choose to, make a living doing so, in a free market, controlling their own destiny, selling their own product,
+without a larger controlling interest gating that process.
+<br>
+<br>
+
+WIN32 is one such manifestation of that freedom.
+<br>
+<br>
+
+There are some very obvious trends in the industry
+specifically in the layers of complexity being introduced either in hardware or software.
+For example, virtualization in hardware mixed with more attempts to sandbox software.
+Or the increased distance one has to the display hardware.
+Look at VR, you as an application developer are locked out of the display, and have to pass through a graphics API interopt layer
+which does a significant amount of extra processing in a separate process.
+Or perhaps the "service-ication" of software to subscription models.
+Or perhaps the HDR standard removing your ability to control tone-mapping.
+Or perhaps it is just the complexity of the API which makes it no longer practical to do what was done before, even if it is still actually possible.
+<br>
+<br>
+
+Following the trends to their natural conclusion
+perhaps paints a different picture for system APIs like WIN32.
+They don't go away per say, they just get virtualized behind so many layers, 
+it is becomes impossible to gain the advantages those APIs had when they were direct.
+That is one of the important freedoms which is eventually lost.
+<br>
+<br>
+
+One of the best examples of this phenomenon is how the new generation perceives old arcade games.
+Specifically as,
+games with incorrect color (CRT gamma around 2.5 being presented as sRGB without conversion),
+giant exactly square pixels (never happened on CRTs),
+with dropped frames (arcade had crystal clear no-jitter on v-sync animation), 
+with high latency input due to emulation in a browser for example (arcade input was instant in contrast),
+with more latency due to swap-chains added in the program (arcade hardware generated images on scan-out),
+with added high latency displays (HDTVs and their +100 milliseconds, vs instant CRTs),
+and games with poor button and joystick quality (arcade controls are a completely different experience).
+Everything which made arcades awesome was lost in the emulation translation.
+<br>
+<br>
+
+Returning to the article, 
+I don't believe there is any risk in WIN32 being instantly deprecated, 
+because if that was to happen, it would be a macro-level event well beyond the tolerance level
+required to trigger action.
+The real risk is the continued slow extinction.
+
+
+
+</div></body></html>
+
+
+
