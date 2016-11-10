@@ -1,0 +1,25 @@
+<html><head><link rel="stylesheet" href="style.css"></head><body><div class="page">
+<h1>20121203 - Simple Custom Web Server Tricks</h1>
+<br>
+
+Building an ultra minimal web server for my side project. Here are some of the simplifications I'm making,<br>
+<br>
+(1.) Return the entire site and image content in the first reply to minimize first hit latency. Using the <a href="http://en.wikipedia.org/wiki/Data_URI_scheme">Data URI Scheme</a> to embed the images in the single html file directly. Then javascript for anything interactive.<br>
+<br>
+(2.) Skipping reading and parsing the browsers request. Simply returning the entire site reply for any request. This seems to work locally, will need to validate on a loaded machine serving real content. There is an open question if not reading from the socket and later closing will result in kernel buffers filling up. The reply includes the connection close header for HTTP/1.1,<br>
+<br>
+<tt>HTTP/1.1 200 OK<br>
+Connection:close<br>
+Content-Type:text/html<br>
+Content-Length:....</tt><br>
+<br>
+(3.) If any other content needs to be linked, just use port number to choose content. This is continuing the "no parsing" overhead simplification.<br>
+<br>
+(4.) Keep content in memory with headers. Skips extra write() or copy.<br>
+<br>
+
+
+</div></body></html>
+
+
+
