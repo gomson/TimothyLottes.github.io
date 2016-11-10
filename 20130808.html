@@ -1,0 +1,92 @@
+<html><head><link rel="stylesheet" href="style.css"></head><body><div class="page">
+<h1>20130808 - Runtime Recompile Reloaded</h1>
+<br>
+
+<i>Prior posted a technique which used shared objects (Linux) or dynamic link libraries (Windows). This technique required a copy of the global data on reload so that fast RIP relative addressing could be used on x86-64. Here is something better, something much closer to the metal.</i><br>
+<br>
+<b>Bypassing DLLs and SOs</b>
+<br>
+This new technique is simple. Instead of using a DLL/SO, just generate a raw binary and load the binary to a fixed memory address in the address space of the application. Setup an uninitialized global data section at another fixed memory address. The binary can return back to the loader which can then reload a new binary and call back in keeping existing data. Fast instant edit/compile/test loop!<br>
+<br>
+The x86-64 ISA takes an extra instruction byte cost for 32-bit absolute addressing (the SIB byte). RIP (instruction) relative addressing is one byte shorter and still has a +/- 2GB range when using a 32-bit immediate offset. Given that DLLs/SOs are loaded at a variable offset at runtime, using a fixed memory segment would incure an extra byte tax for instructions reading globals. This method of avoiding DLLs/SOs and going direct to raw binaries (loaded at fixed addresses) insures that globals can be fetched with faster RIP relative addressing.<br>
+<br>
+Another side effect of this fixed address is that code and data from the fixed global data section can use 32-bit pointers safely. Clearly OS and external libs can still generate pointers which would require 64-bits.<br>
+<br> 
+<b>The Basics</b>
+<br>
+This leverages gcc features (gcc is easy on Windows via a MinGW install). First an example loader. Showing Linux examples here because they are easier to understand. Start with a mini shell application which loads a binary. Leverage the ability to mmap() or VirtualAlloc() to a fixed memory address with READ, WRITE, and EXECUTE permissions. On Linux, 0x40000000 works well. On Linux x86-64, 2MB aligned and 2MB multiple sized mappings get auto promoted to large pages which reduces system overhead (less TLB pressure, less page table memory, etc). This example will follow that practice. Only covering how to load the first time here. Loading a new binary again can easily be done when the StartF entry function returns.<br>
+<br>
+<tt>typedef void (*StartF)(void);<br>
+<br>
+// FIRST MAP MEMORY AT FIXED ADDRESS<br>
+int* adr = (int*)mmap((void*)0x40000000,2*1024*1024,<br>
+PROT_READ|PROT_WRITE|PROT_EXEC,<br>
+MAP_FIXED|MAP_PRIVATE|MAP_ANONYMOUS,0,0);<br>
+<br>
+// PERSISTANT FIXED DATA SEGMENT STARTS AT 1MB IN<br>
+int* adr2 = adr + (0x100000/4);<br>
+adr2[0]=1234;<br>
+printf("%d\n",adr2[0]);<br>
+<br>
+// LOAD THE BINARY FROM A FILE<br>
+int h=open("Binary.LinuxI64",O_RDONLY);<br>
+read(h,(void*)adr,1024);<br>
+<br>
+// CALL THE ENTRY FUNCTION<br>
+((StartF)adr)();<br>
+printf("%d\n",adr2[0]);</tt><br>
+<br>
+
+<b>Generating the Binary from C Code</b>
+<br>
+Same as last time (and not shown in this example), the loader would pass a pointer to dlsym() or GetProcAddress() to the binary so that the binary can fetch pointers to symbols in libraries like GL or X11 which get linked to the loader. The binary gets linked to nothing. Here is an example program, where the fixed memory segment is called ".ram".<br>
+<br>
+<tt>// THIS MUST BE THE FIRST LINE OF THE FILE<br>
+__asm__ ("jmp start\n");<br>
+// DEFINE LAYOUT OF GLOBAL MEMORY<br>
+typedef struct { unsigned int a; } RamT;<br>
+// DECLARE UNINITIALIZED GLOBALS IN A USER DEFINED SECTION<br>
+static RamT ram __attribute__((section(".ram")));<br>
+// ENTRY POINT OF PROGRAM<br>
+void start(void) { ram.a=5678; }</tt><br>
+<br>
+Unlike standard C, on first load, anything in the "ram" structure would not be pre-zeroed unless the loader manually zeroed the section.<br>
+<br>
+Compiling is done directly to an object file. For example,<br>
+<br>
+<tt>gcc MyProgram.c -o MyProgram.o -c -std=gnu99 -O3 -fomit-frame-pointer -msse -msse2 -msse3 -march=nocona -ffast-math -mno-ieee-fp -mfpmath=sse -fno-exceptions -fno-asynchronous-unwind-tables -fno-zero-initialized-in-bss -nostdlib</tt><br>
+<br>
+Inspecting the sections of this object file can be done via,<br>
+<br>
+<tt>objdump -h MyProgram.o</tt><br>
+<br>
+The magic happens at link time. Leverage gnu ld to link to a raw binary using a linker script,<br>
+<br>
+<tt>ld -TLink.LinuxI64 MyProgram.o</tt><br>
+<br>
+Here is the Link.LinuxI64 linker script which works for this example,<br>
+<br>
+<tt>OUTPUT(Binary.LinuxI64)<br>
+OUTPUT_FORMAT(binary)<br>
+OUTPUT_ARCH(i386:x86-64)<br>
+SECTIONS<br>
+{<br>
+. = 0x40000000;<br>
+.text : { *(.text); *(.data); *(.rodata*); *(.bss); }<br>
+. = 0x40100000;<br>
+.ram : { *(.ram); }<br>
+/DISCARD/ : { *(.note*); *(.comment); }<br>
+}</tt><br>
+<br>
+Inspecting the disassembly of Binary.LinuxI64 can be done via,<br>
+<br>
+<tt>objdump -D -b binary -mi386:x86-64 Binary.LinuxI64</tt><br>
+<br>
+
+
+
+
+</div></body></html>
+
+
+
