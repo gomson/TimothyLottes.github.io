@@ -1,0 +1,19 @@
+<html><head><link rel="stylesheet" href="style.css"></head><body><div class="page">
+<h1>20160905 - GPU Parking Lot</h1>
+<br>
+
+
+<b>Push Model</b>
+<br>
+Perhaps the GPU parking lot, aka register file waiting on long latency returns, 
+is a side effect of not having ability to issue a load which pushes data to a different SIMD unit's register file?
+If loads could be issued and return somewhere else, one could possibly split a problem into 2 components:
+the part figuring out how to route memory traffic, and the part consuming the memory traffic.
+No call and return, thus no parking of state after loads.
+
+
+
+</div></body></html>
+
+
+
