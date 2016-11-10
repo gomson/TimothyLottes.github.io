@@ -1,0 +1,114 @@
+<html><head><link rel="stylesheet" href="style.css"></head><body><div class="page">
+<h1>20090318 - Reattachable Code</h1>
+<br>
+
+
+
+<b>Reattachable Code</b>
+<br>
+<strong>For the new iPhone version of Atom I decided to go with reattachable code for development. 
+The entire codebase can be recompiled at runtime at reattached to the running executeable. 
+This enables all sorts of quick development such as testing and profiling changes on a live running engine.</strong>
+<br><br>
+For development the code is compiled as a library, a small loader program makes a copy of the library, and loads the library copy to run the program. 
+The program allocates all data at startup, and uses one single pointer to reference any data. 
+I use nothing global except read only data. 
+While the program is running the original library can be recompiled. 
+Then in one key press, the program returns to the loader and returns that single data pointer. 
+The loader makes a copy of the new library, loads the copy, and passes in the data pointer to the new code. 
+Then the engine continues where it left off.</p> <p>For release the single pointer references a static global, so related compiler optimizations are enabled.
+<br><br>
+
+<b>GPGPU Course Notes</b>
+<br>
+Jawed a <a href="http://forum.beyond3d.com/">Beyond3D</a> regular poster, posted a link to some rather good GPGPU 
+<a href="http://coachk.cs.ucf.edu/courses/CDA6938/notes.htm">course notes from ECE 498AL</a> at UIUC. 
+Too bad GPGPU didn't exist when I was there...
+<br>
+<br>
+<b>QuickMath</b>
+<br>
+For those who don't have a copy of <a href="http://www.wolfram.com/products/mathematica/index.html">Mathematica</a> 
+the <a href="http://www.quickmath.com/">www.quickmath.com</a> site can once and a while be a great time saver.
+<br>
+<br>
+<b>GDC09</b>
+<br>
+Second year at HH and like last year, I won't be with the other HHers going to GDC. 
+Also probably won't get to all the presentations until the week after GDC, but greatly looking forward to it all...
+<br>
+<br>
+
+<b>OpenCL</b>
+<br>
+<a href="http://www.behardware.com/articles/744-3/opencl-democracy-for-gpu-computing.html">More older OpenCL info.</a>
+<br>
+<br>
+<b>More Atom iPhone Updates</b>
+
+Working on the hidden surface removal algorithm, attempting to solve the unsolvable problem. 
+Only get 8K-16K triangles, want lots of graphics, oh and cannot use blending. 
+No problem. Doing extreme LOD, and working on the "Grove of Trees" problem. 
+Best way to solve the problem of too many things to draw, is not to draw too many things, even if they are all visible.
+ Problem ends up being more of an art than a science, how to insure all LOD transitions are smooth and clean.
+<br>
+<br>
+Fade in is now working quite well. LOD fade in of higher detail looks like the object is "growing". 
+So fade in nodes start out with zero size, and increase to full size. 
+Most of the time the new nodes start hidden inside the parent and the effect looks great. 
+This is about the best which can be done without blending.
+<br>
+<br>
+Fade out is a complex problem without blending. I have in for testing frame-dithered fade out (faking transparency). 
+Just wanted to see what it would look like, didn't seem as bad as I thought it would be. 
+Actually looks good in cases of a good amount of framebuffer feedback. 
+Current implementation shrinks down size of fade out nodes, and uses a little frame-dithered transparency. 
+Going to try fade out by shrinking node into most dominate child later this evening. Not sure what I am going to go with here.
+<br>
+<br>
+I'm thinking about visuals now that I have a much better idea of what is possible on the platform.
+ I thinking of trying my layered brush idea Redid my performance estimates for the GPU side. 
+Seems like everything should work out based on previous testing on the actual device. 
+Even thinking I could combine my feedback with a 2nd texture. Not sure if this is a good idea however.
+ I hear two conflicting things about the iPhone: that it has a unified CPU/GPU memory and that it has a dedicated 16MB of VRAM. 
+Wouldn't want to starve the CPU bandwidth if it is a unified memory device. CPU side is a big unknown performance wise. 
+I'm still hoping that I don't have to do lots of custom VFP code.
+<br>
+<br>
+<strong>Hardest part of development is keeping out all the distracting ideas. Last week I took a weekend away just to work on the project, 
+for some reason I don't get work done when my wife is around.</strong> 
+I also need to stop reminding myself that a PS3 test station is only $1200, 
+and that I could just massively scale up (>100x more triangles) this iPhone Atom engine for the PS3 
+(turns out my other blending Atom engine wouldn't scale to the PS3 without fine grain early stencil, a DX10 level hardware feature). 
+At least I have a backup plan if all doesn't go as planned. 
+Building for strangled low Watt hardware has been a great experience, 
+for once I'm not building stuff for not yet mainstream hardware. 
+Might even break what seems to be a theme in my life, that I only get stuff done at work. 
+In fact I might be the last person at work here now this Thursday waiting on a compile to do a few final tests before a check-in of a bug fix which needed to be in by tomorrow.
+<br>
+<br>
+<b>OpenGL3 Idea I'm Saving for Later</b>
+<br>
+Been wanting to build a geometry streamer in combination with a version of my Atom HSR/LOD code.
+ The idea would be to stream in and out geometry just like textures. 
+Vertex buffer would be chunked up into fixed size pages, geometry paged in and out at run-time. 
+Index buffer would also be adjusted dynamically such that I could have one draw per material, 
+grouping all geometry and all objects for that draw into this dynamic index buffer. 
+Pre-Z pass would have similar large sets of draw calls with multiple objects grouped into big calls. 
+Grouping would be linked to hierarchical level of detail and visibility system. 
+Everything would be wrapped into a nice virtual texture system, and use vertex texture fetch to deal with skinning many objects in one call. 
+Would have been great for the DX10 generation which never really took off.
+<br>
+<br>
+<strong>Anyway with OpenGL3, building a dynamic vertex buffer this way is a possibility. 
+One can glMapBufferRange() with GL_MAP_UNSYNCHRONIZED_BIT to enable writes to a vertex buffer when it is being used by the driver.
+ The key is knowing when the driver has finished with previous draw calls. 
+My idea was to place a dummy occlusion query test at the end of the frame so that I could asynchronously query for completion to know when that frame was completed
+ and thus when it is safe to do an unsynchronized map buffer range for a dynamic update.</strong>
+
+
+
+</div></body></html>
+
+
+
