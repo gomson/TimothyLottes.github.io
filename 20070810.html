@@ -1,0 +1,25 @@
+<html><head><link rel="stylesheet" href="style.css"></head><body><div class="page">
+<h1>20070810 - Graphics Engine Lighting</h1>
+<br>
+
+
+<strong>Update 070811 : The direct links should work now! Thanks Danny for the tip that they were broken.</strong>
+<br>
+<br>
+Normally the transparent elements of a graphics engine would be drawn as a secondary pass after all the opaque geometry. To get around having to z-sort everything, transparent effects are usually provided by additive blending, so all semi-transparent geometry tends to always blend towards some highly saturated hue or white.
+<br>
+<br>
+However, in Atom, everything is drawn z-sorted and in back to front order, so objects can be transparency or opaque, and also can shadow, fog, and be back lit by the objects behind them. Lighting in Atom follows a similar principle. As objects are composited they can pickup the lighting from their local environment. So all objects can light all other objects. The effects are truly remarkable, and I have only just scratched the surface of what is possible.
+<br>
+<br>
+One last video for now, this time showing off some lighting effects. Here is a preview screenshot, because the movie below is a 30MB download.
+<br>
+<br>
+
+<center><a href="20070810-A.mp4"><img src="20070810-A.jpg"></a><br>Image is Link to Movie (Plays in VLC)</center>
+
+
+</div></body></html>
+
+
+
