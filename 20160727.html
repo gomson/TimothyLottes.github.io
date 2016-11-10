@@ -1,0 +1,87 @@
+<html><head><link rel="stylesheet" href="style.css"></head><body><div class="page">
+<h1>20160727 - Vulkan - How to Deal With the Layouts of Presentable Images</h1>
+<br>
+
+
+EDITS: Turns out it is possible to make the PRESENT source into an UNDEFINED source, so the first use permutation is only needed for apps which read from the prior presented output. Leaving the rest as originally written ...
+<br>
+<br>
+<i>Continuing my posts on building a Vulkan based Compute based Graphics engine from scratch (no headers, no libraries, no debug tools, no using existing working code)...</i>
+<br>
+<br>
+Interesting to Google something and already get hits on Vulkan questions on <a href="http://stackoverflow.com/questions/37524032/how-to-deal-with-the-layouts-of-presentable-images">Stack Overflow - How to Deal With the Layouts of Presentable Images</a>.
+Turns out one of the frustrating aspects of Vulkan is the WSI or presentation interface.
+Three specific things make this a pain in the butt, quoting from the Vulkan spec.
+<br>
+<br>
+(1.) <i>"Use of a presentable image must occur only after the image is returned by vkAcquireNextImageKHR, and before it is presented by vkQueuePresentKHR. <b>This includes transitioning the image layout</b> and rendering commands."</i>
+
+<br>
+<br>
+(2.) <i>"The order in which images are acquired is implementation-dependent. Images may be acquired in a seemingly random order that is not a simple round-robin."</i>
+<br>
+<br>
+(3.) <i>"Let n be the total number of images in the swapchain,
+m be the value of VkSurfaceCapabilitiesKHR::minImageCount, 
+and a be the number of presentable images that the application
+has currently acquired (i.e. images acquired with
+vkAcquireNextImageKHR, but not yet presented with vkQueuePresentKHR).
+vkAcquireNextImageKHR can always succeed if a<=n-m at the time vkAcquireNextImageKHR is called.
+vkAcquireNextImageKHR should not be called if a>n-m ..."</i>
+<br>
+<br>
+
+The last part (3.) roughly translates into the fact that you might not be guaranteed ability to Acquire all images at any one time.
+Placing all these problems together means that it is impossible to do the following,
+<br>
+<br>
+(A.) No way to robustly pre-transform all images into VK_IMAGE_LAYOUT_PRESENT_SRC_KHR before entering normal run-time conditions. 
+Instead you have to special case the transition the 1st time acquire returns a given index.
+IMO this adds unnecessary complexity for absolutely no benefit, and makes it really easy to introduce bugs.
+I've see online Vulkan examples violate rule (1.).
+<br>
+<br>
+(B.) No way to ensure a simplified round-robin order even in cases where it is physically impossible to get anything other than round-robin
+(such as full-screen flip with v-sync on and a 2 deep swap chain).
+<br>
+<br>
+
+<b>Working Around the Problem</b>
+<br>
+
+This problem infuriates me personally because of all the wasted time required to add complexity for no benefit.
+Likewise being forced to double buffer instead of front buffer is also a large waste of time for a regression in latency.
+Since my engine is command buffer replay based (no command buffers are generated after init-time), I ended up needing 8 baked command buffer permutations.
+<br>
+<br>
+(1.) Even frame pre-acquire.<br>
+(2.) Odd frame pre-acquire.<br>
+(3.) Even frame post-acquire image index 0.<br>
+(4.) Even frame post-acquire image index 1.<br>
+(5.) Odd frame post-acquire image index 0.<br>
+(6.) Odd frame post-acquire image index 1.<br>
+(7.) Transition from UNDEFINED to PRESENT_SRC for image index 0.<br>
+(8.) Transition from UNDEFINED to PRESENT_SRC for image index 1.
+<br>
+<br>
+The workaround I have for needing to special case transitions on 1st acquire of a given index, 
+is to run the transition from UNDEFINED command buffer instead of the one which normally draws into the frame.
+So there is a possibility of randomly seeing one extra black frame after init time.
+This IMO is all throw-away code anyway once I can get some kind of front-buffer access.
+<br>
+<br>
+<b>Bugs</b>
+<br>
+<i>Interesting to look back at the bugs I had to deal with on route to getting the basic example of a compute shader rendering into a back-buffer.
+Really only 2 bugs, one I forgot to vkGetDeviceQueue(), which was trivial to find and fix.
+The other was that when creating the swap chain I accidentally set imageExtent.width to height and left imageExtent.height to zero.
+No amount of type-checking would ever help in finding that bug.
+Didn't see any errors, so took a while of reinspecting the code to see what I had screwed up.
+<br>
+<br>
+In hindsight, after knowing what to do, using Vulkan was actually quite easy.
+</i>
+</div></body></html>
+
+
+
