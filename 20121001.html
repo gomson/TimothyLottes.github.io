@@ -1,0 +1,23 @@
+<html><head><link rel="stylesheet" href="style.css"></head><body><div class="page">
+<h1>20121001 - Linux Distros and Compression</h1>
+<br>
+Attempting to wrap my head around why Linux distros typically use slow decompressors for things like kernel compression on modern machines. Given that USB2 peaks out at 60MB/s and USB3 peaks at around 625MB/s (with upwards of 225MB/s already possible on the fastest USB3 thumb drives), seems like the bandwidth/compute ratio is quite a bit different these days. Total time is IO + decompression, so LZ4 (for USB3) and LZO (for USB2 limit) based decompressors should have a better overall time on fast thumb drives.<br>
+<br>
+Another thing I don't fully understand is why squashfs with LZMA is the hot topic for thumb based distros. The idea being to preload the distro into memory on boot, using a read-only squashfs compressed with LZMA. Ok, so anytime any code or data gets accessed from this squashfs mount, it gets decompressed, which takes time (LZMA is really slow), and to top it off, the end result is more memory consumption than simply keeping the uncompressed files in memory. At least with an uncompressed tmpfs, programs can be executed in place as the pages simply get mapped without copy (no extra memory consumption).<br>
+<br>
+Looking forward, why bother with loading the distro into memory at boot? Usually machines have more than one USB port, so no reason to need to pull out the thumb drive. Typically the boot process is going to block waiting for the distro to fully load, which is a negative for preloading into ram. The reason for the preload is to speed up the typical long latency chain of page faults on startup of a large application like a bloated web browser. Note with a squashfs mount, one adds the latency of decompression. A better option is likely to just have some background process pre-warm the page cache. The core concept here is simply to boot without any pre-load of the disto into ram, enabling the fastest path to the point where the user can actually do something. Then launch a background process after boot which simply streams reading through the filesystem, but only during the absence of other important thumb drive IO, and order the reads based on what the user is likely to use first. This process will effectively populate the page cache with the distro, and if any application ever needs the memory, the OS will simply discard the pages in the cache.<br>
+<br>
+One last issue, flash drive write endurance. Some distros go to amazing levels of complexity to avoid writing to flash drives. For instance using unionfs or aufs to merge a read-only base distro with files modified or added by the user. The idea here being to only save modified files periodically as the distro is being used, or to only save on shutdown, then layer all the change-list filesystems in reverse order on boot such that the system sees only the newest version of a file.<br>
+<br>
+Is this really necessary?<br>
+<br>
+First lets assume the distro at a minimum corrects the typical linux distro log file crazyness (as in lets log crap that no user will ever read, then create another background system of cron jobs to clean logs, which no one reads). And second lets assume no swap, as the modern machine has more than enough memory, and the OS can still evict un-modified data pages (which tangently hints that a read-only mmap() of raw data might actually be a good idea on mobile platforms). And third lets assume other such things in the distro are changed to favor lower complexity and less writes. What is left is the raw amount of data the user can download, install, and modify.<br>
+<br>
+Wikipedia says cheap flash is good for 10,000 write cycles. Unless I'm reading this wrong, this is saying a 32 GB flash drive can take 320,000 GB of streaming writes before death. Lets say peak write speed is 150 MB/s for this 32 GB USB3 drive, it would take 24 days of continous writes to toast the drive. More realistically typical average US broadband bandwidth is under 1MB/s, and at that rate it takes 10 years to toast the flash drive.<br>
+<br>
+So returning to the question, "Is this really necessary?", I'm thinking the answer is no.
+
+</div></body></html>
+
+
+
