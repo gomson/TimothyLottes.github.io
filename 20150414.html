@@ -1,0 +1,26 @@
+<html><head><link rel="stylesheet" href="style.css"></head><body><div class="page">
+<h1>20150414 - From Scratch Bug</h1>
+<br>
+
+Inspired by Jaymin's <a href="http://jaystation2.maisonikkoku.com/JayStation2/JayStation2.html">JayStation2</a> effort and remembering a past life building custom OSs for early x86 machines, haven't been able to avoid the custom OS bug any longer. It starts easy with a harmless QEMU install, followed by a 512-byte bootloader switching to 80x50 text mode and installing a custom 48 character Forth font, then bring up of a Forth assembler/editor, then on to the pain of modern PCI and USB driver bring-up... with the eventual goal of a tiny bootable USB thumb system.<br>
+<br>
+Amazingly refreshing to not have the OS telling you NO. Or the API telling you NO. Modern systems are all about the NO. Systems I grew up on were all about the YES.<br>
+<br>
+Reworking my language from scratch, trying something new, replacing the Forth data stack with a new concept, but maintaining zero operand opcodes. Not sure if the idea will pan out. Dropping everything but 32-bit word support from the language, no need to interop with other software. No more 8/16/64-bit loads or stores (can still just inline machine code if required). Still running in x86-64 64-bit mode, so return stack PUSH/POP/CALL/RET is still a 64-bit stack operation, just don't need that 64-bit address space or 64-bit pointers anywhere else. Trying padding out all x86 opcodes to 32-bit alignment. This makes the 32-bit immediate 32-bit aligned. Wastes space, gives up some perf? Why would I care when most of the CPU side of the system fits in the L1 cache. Dropping paging, dropping interrupts, dropping everything, none of that stuff is needed.<br>
+<br>
+Reworking an editor and binary source encoding. Switching to 32-bit tokens with 5 character max strings. 48 character character-set. Doing something horrible with font design: 1=I, 0=O, 2=Z, 5=S, etc. All caps font with no non-vertical or non-horizonal lines. Actually looks awesome. When you don't have to interop with the NO machine, long symbol names are not required. Color Forth like editors have almost no state. It is magical how they function simultaneously as an editor/assembler/console/debugger/UI/etc. Take the idea of "editor-time-words", words embedded in the source code which are evaluated when the block of source is drawn to the screen. Becomes possible to build out UI tools in the source. Can have an editor-time word read system data and draw in real-time updates in the source code itself. Editor-time words are just like any other word in the system, just color tagged to only be evaluated at draw time.<br>
+<br>
+Minimal systems are a blessing, more so when you have only minimal free time to work on them.
+
+
+
+
+
+
+
+
+
+</div></body></html>
+
+
+
