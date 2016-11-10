@@ -1,0 +1,218 @@
+<html><head><link rel="stylesheet" href="style.css"></head><body><div class="page">
+<h1>20160724 - Simplified Vulkan Rapid Prototyping</h1>
+<br>
+
+<i>Nothing simple about using Vulkan, so this title is a little misleading ...</i>
+<br>
+Trying something new for my next Vulkan based at-home prototyping effort and building from scratch for 64-bit machines only.
+
+Building a simplified version of my prior rapid prototyping system.
+
+This version on code change instead of reloading a DLL, actually does re-compile and restart the program.
+
+My theory is that restart time is going to be lower than the time it takes to recompile shaders.
+
+I'm not concerned with re-fill of the GPU with baked data because I don't ever use much, and also never have much non-runtime-regeneratable state either.
+
+Program is required, somewhat like a "save snapshot" game emulator, to be able to instantly restart to where it was running before (at the time of last snapshot).
+
+This has some interesting advantages, like error handling becomes trivial, just exit the program and restart! 
+For correct handling of things like VK_ERROR_DEVICE_LOST or VK_ERROR_SURFACE_LOST_KHR just exit.
+No need to have two binaries (one for development, one for release), as I never use debug.
+
+<br>
+<br>
+<b>Details</b>
+<br>
+
+I've got only one source file, with #defines to enabling keeping both GLSL and C code in the same file.
+Also I've got no includes to optimize for compile time.
+Notice on Windows, "vulkan.h" ultimately includes "windows.h", for example to get HWMD and HINSTANCE types,
+so sans rolling your own version of the headers, the compile dips into the massive platform include tree.
+Re-rolling only what I need from the Vulkan headers is quite frankly a nightmare of work due to Vulkan verbosity, but should be mostly over soon.
+I've also in the process made un-type-safe (yeah) version of the Vulkan API, 
+returning to base system types, so I never have to bother with silly compile warnings.
+All handles are just 64-bit pointers, etc.
+It works great. I was beyond having type-safety bugs from birth, being brought up on assembly first. 
+The bugs I have now are more like, 
+"<i>the last time I worked on this was a month ago, and I forgot to call vkGetDeviceQueue(), but already wrote code out-of-order using the queue handle</i>".
+As any programmer, out of habit, I first blamed the driver, and ultimately realized that I was the idiot instead.
+<br>
+<br>
+Part of the motivation for this design is out of laziness.
+Since Vulkan requires SPIR-V input, and I work in GLSL,
+I need to call "glslangValidator.exe" to convert my GLSL into SPIR-V,
+and I sure didn't feel like writing a complex system to be spawning processes from inside my app.
+So I have a shell script per platform which does, 
+{compile shaders, convert SPIR-V binaries to headers which are included in the program, recompile the program, launch program, then repeat}.
+<br>
+<br>
+
+Engine design is trivial as well, just setting up baked command buffers and then replaying them until exit.
+Everything compute based, and dispatch indirect based to manage variability.
+No graphics makes using Vulkan quite easy relatively speaking, no graphics state, no render passes, trivial transitions.
+<br>
+<br>
+<i>
+I'm debating on if to eventually release basic source for this project or not.
+On one hand it is a good example of Windows/Linux Vulkan app from scratch.
+On the other hand, my code is very much in shorthand which looks alien to other humans
+(likely the inverse of how C++ looks totally alien to me).
+For example, the following (which might get wrapped poorly by the browser) is my implementation of everything I need for printf style debugging writing to terminal.</i>
+<br>
+<br>
+<pre>
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//=============================================================================================================================
+//
+// [KON] CONSOLE MESSAGE SYSTEM
+//
+//-----------------------------------------------------------------------------------------------------------------------------
+// A background message thread which handles printing.
+// This works around the problem of slow console print on Windows.
+// This also allows single point to override to stream to file, etc.
+// Multiple threads can send messages simultaneously.
+// It would be faster to queue messages per thread, but this isn't about speed, but rather mostly debug.
+// Merging per message gives proper idea of sequence of events across threads.
+// This has spin waits in case of overflow panic, so set limits so overflow panic never happens. 
+//=============================================================================================================================
+ // Defaults, must be a power of two.
+ // Number of characters in ring.
+ #ifndef KON_BUF_MAX
+  #define KON_BUF_MAX 32768
+ #endif
+ // Number of messages in ring.
+ #ifndef KON_SIZE_MAX
+  #define KON_SIZE_MAX 1024
+ #endif
+ // Maximum message size for macro message generation.
+ #ifndef KON_CHR_MAX
+  #define KON_CHR_MAX 1024
+ #endif
+//-----------------------------------------------------------------------------------------------------------------------------
+ typedef struct {
+  A_(64) U1 buf[KON_BUF_MAX*2]; // Buffer for messages, double size for overflow.
+  A_(64) U4 size[KON_SIZE_MAX]; // Size of messages.
+  A_(64) U8 atomReserved[1];    // Amount reserved: packed {MSB 32-bit buffer bytes, LSB 32-bit size count}.
+  U8 atom[1];                   // Next: packed {MSB 32-bit buffer offset, LSB 32-bit size offset}.
+  C2 write;                     // Function to write to console (adr,size). 
+  U4 frame;                     // Updated +1 everytime the writter goes to sleep (used for drain).
+ } KonT;
+ S_ KonT kon_[1];
+ #define konR TR_(KonT,kon_)
+ #define konV TV_(KonT,kon_)
+//-----------------------------------------------------------------------------------------------------------------------------
+ // Begin KON_CHR_MAX macro message.
+ #define K_ { U1 konMsg[KON_CHR_MAX]; U1R konPtr=U1R_(konMsg)
+ // Ends.
+ #define KON_MSG KonWrite(konMsg,U4_(U8_(konPtr)-U8_(konMsg)))
+ #define KE_ KON_MSG; }
+ #define KW_ KON_MSG; KonWake(); }
+ #define KD_ KON_MSG; KonDrain(); }
+//-----------------------------------------------------------------------------------------------------------------------------
+ #define KN_ konPtr[0]='\n'; konPtr++
+ // Ends with newline.
+ #define KNE_ KN_; KE_
+ #define KNW_ KN_; KW_
+ #define KND_ KN_; KD_
+//-----------------------------------------------------------------------------------------------------------------------------
+ // Append numbers.
+ #define KH_(a) konPtr=Hex(konPtr,a)
+ #define KU1_(a) konPtr=HexU1(konPtr,a)
+ #define KU2_(a) konPtr=HexU2(konPtr,a)
+ #define KU4_(a) konPtr=HexU4(konPtr,a)
+ #define KU8_(a) konPtr=HexU8(konPtr,a)
+ #define KS1_(a) konPtr=HexS1(konPtr,a)
+ #define KS2_(a) konPtr=HexS2(konPtr,a)
+ #define KS4_(a) konPtr=HexS4(konPtr,a)
+ #define KS8_(a) konPtr=HexS8(konPtr,a)
+//-----------------------------------------------------------------------------------------------------------------------------
+ // Append decimal.
+ #define KDec1_(a) konPtr=Dec1(konPtr,a)
+ #define KDec2_(a) konPtr=Dec2(konPtr,a)
+ #define KDec3_(a) konPtr=Dec3(konPtr,a)
+//-----------------------------------------------------------------------------------------------------------------------------
+ // Append raw data.
+ #define KR_(a,b) do { U4 konSiz=U4_(b); CopyU1(konPtr,U1R_(a),konSiz); konPtr+=konSiz; } while(0)
+ // Append character.
+ #define KC_(a) konPtr[0]=U1_(a); konPtr++
+ // Append zero terminated compile time immediate C-string.
+ #define KZ_(a) CopyU1(konPtr,Z_(a)-1); konPtr+=sizeof(a)-1
+ // Append non-compile time immediate C-string.
+ #define KZZ_(a) KR_(a,ZeroLen(U1R_(a)))
+//-----------------------------------------------------------------------------------------------------------------------------
+ // Quick message for debug.
+ #define KQ_(a) K_; KZ_(a); KD_
+//-----------------------------------------------------------------------------------------------------------------------------
+ // Quick decimal.
+ #define KDec2Dot3_(a) KDec2_(a/1000); KC_('.'); KDec3_(a%1000)
+ #define KDec3Dot3_(a) KDec3_(a/1000); KC_('.'); KDec3_(a%1000)
+//=============================================================================================================================
+ S_ void KonWake(void) { SigSet(SIG_KON); }
+//-----------------------------------------------------------------------------------------------------------------------------
+ // Unpack components from atom.
+ I_ U4 KonSize(U8 atom) { return U4_(atom); } 
+ I_ U4 KonBuf(U8 atom) { return U4_(atom>>U8_(32)); }
+//-----------------------------------------------------------------------------------------------------------------------------
+ // Unpack components from atom and mask.
+ I_ U4 KonMaskSize(U8 atom) { return KonSize(atom)&(KON_SIZE_MAX-1); }
+ I_ U4 KonMaskBuf(U8 atom) { return KonBuf(atom)&(KON_BUF_MAX-1); }
+//-----------------------------------------------------------------------------------------------------------------------------
+ // Reserve space to write message.
+ I_ U8 KonReserve(U4 bytes) { return AtomAddU8(konV->atomReserved,(U8_(bytes)<<32)+1); } 
+//-----------------------------------------------------------------------------------------------------------------------------
+ // Release space reservation.
+ S_ void KonRelease(U4 bytes,U4 msgs) { AtomAddU8(konV->atomReserved,(-(U8_(bytes)<<32))+(-U8_(msgs))); }
+//-----------------------------------------------------------------------------------------------------------------------------
+ // Check if reservation under limits.
+ S_ U4 KonOk(U8 atom) { return (KonSize(atom)<KON_SIZE_MAX)&&(KonBuf(atom)<KON_BUF_MAX); } 
+//-----------------------------------------------------------------------------------------------------------------------------
+ // Get atom for next message.
+ I_ U8 KonNext(U4 bytes) { return AtomAddU8(konV->atom,(U8_(bytes)<<32)+1); } 
+//-----------------------------------------------------------------------------------------------------------------------------
+ // Copy in message.
+ S_ void KonCopy(U8 atom,U1R adr,U4 bytes) { CopyU1(konR->buf+KonMaskBuf(atom),adr,bytes);
+  AtomSwapU4(konV->size+KonMaskSize(atom),bytes); }
+//-----------------------------------------------------------------------------------------------------------------------------
+ // Used for debug busy wait until message is displayed.
+ S_ void KonDrain(void) { U4 f=konV->frame; while(f==konV->frame) { SigSet(SIG_KON); ThrYield(); } }
+//-----------------------------------------------------------------------------------------------------------------------------
+ // Write message to console.
+ S_ void KonWrite(U1R adr,U4 bytes) { while(1) { 
+  if(KonOk(KonReserve(bytes))) { KonCopy(KonNext(bytes),adr,bytes); return; }
+  KonRelease(bytes,1); KonWake(); ThrYield(); } }
+//=============================================================================================================================
+ // Background thread which sends messages to the actual console.
+ S_ U8 KonThread(U8 unused) { U4 bufOffset=0; U4 sizeOffset=0; 
+  while(1) { U4 bytes=0; U4 msgs=0; SigWait(SIG_KON,1000); SigReset(SIG_KON);
+   while(1) { U4 size=konV->size[sizeOffset]; bytes+=size;       
+    // If not zero need to force clear before adjusting free counts, to mark as unused entry.
+    if(size) konV->size[sizeOffset]=0; 
+    // Force write if would wrap, or found zero size message.
+    if(((bufOffset+bytes)>=KON_BUF_MAX)||(size==0)) {
+     konV->write(U8_(konR->buf+bufOffset),bytes);
+     bufOffset=(bufOffset+bytes)&(KON_BUF_MAX-1); 
+     KonRelease(bytes,msgs); bytes=0; msgs=0;
+     // If hit zero size break (zero size means rest of messages are empty).
+     if(size==0) break; }
+    msgs++; sizeOffset=(sizeOffset+1)&(KON_SIZE_MAX-1); } 
+   // Only advance frame until after draining.
+   BarC(); konV->frame++; } } 
+//-----------------------------------------------------------------------------------------------------------------------------
+ S_ void KonInit(void) { konR->write=C2_(ConWrite); ThrOpen(KonThread,THR_KON); }
+</pre>
+
+
+
+
+
+
+
+
+</div></body></html>
+
+
+
