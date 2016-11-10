@@ -1,0 +1,74 @@
+<html><head><link rel="stylesheet" href="style.css"></head><body><div class="page">
+<h1>20070822 - New Pipeline Progress</h1>
+<br>
+
+
+Work on the new combined graphics, physics, and CFD pipeline is progressing quite smoothly. 
+All the current and previous screen shots and videos on this page (except the CFD stuff) 
+are from my 100% working older fixed function pipeline and later Shader Model 3.0 source path in which nearly all the pipeline is CPU side except for compositing. 
+During this major rewrite and optimization effort, I keep the old development path alive to test new ideas and simplifications.
+<br>
+<br>
+As it turns out, months ago when I had switched from development on my on-motherboard Intel GMA3000 to a NVidia 8600 GTS card, 
+I had forgotten that I had turned off most of my aggressive hidden surface removal algorithm because the NVidia card provided a such a performance jump 
+(both in offloading triangle setup, and fragment processing). 
+Now with the aggressive HSR back on, I have found some substantial performance increases as I tweak and optimize the algorithm for the final pipeline.
+<br>
+<br>
+<b>CPU / GPU Mix</b> 
+<br>
+My new pipeline follows a very simple philosophy, move anything which can be parallelized which does not require double precision to the GPU, 
+everything else is staying CPU side. The rough pipeline design is as follows. Note this is in logical order, 
+actual order is different to hide the latency of CPU to GPU bus transfers and computation. 
+Also I am skipping on the full Audio algorithm integration (which also features a CPU/GPU mix) until I get this 100% working.
+<br>
+<br>
+<ol><li>CPU: Expand/contract the world tree structure based on interaction and view.</li> 
+<li>CPU: Compute next animation frame for used cell animated l-system rules (requires double precision).</li> 
+<li>CPU: Do world space to eye space transform for cells (requires double precision).</li> 
+<li>CPU: Transfer single precision eye space coordinates and other data to GPU via VBO transfers.</li> 
+<li>GPU: Project all cells into 2D screen space, compute all data necessary for CPU hidden surface removal (HSR) algorithm, 
+and compute all factors for final display and physics properties. This runs as a geometry shader writing out to VBOs on the GPU.</li> 
+<li>GPU: Transfer back the (HSR) data and modified z sort coordinate to the cpu.</li> 
+<li>CPU: Sort nodes for HSR from front to back order (radix sort). Run HSR algorithm, which is hopelessly linear, 
+running through the cells in z order and filtering out cells which are decided to be hidden enough to prune from the final display list. 
+HSR also computes the priority for the beginning expansion/contraction step.</li> 
+<li>CPU: Send index of displayable cells in back to front order to GPU.</li> 
+<li>GPU: Composite all drawable cells back to front order to 16bit framebuffer, running a shader which does emmitive and fractal environmental reflective lighting.</li> 
+<li>CPU: Prep special ordered index list of cells for all the physics/CFD scattering passes. Send these index lists to the GPU via VBOs. 
+Send parent relative cell velocity and other per cell physics/CFD properties to GPU via VBOs.</li> 
+<li>GPU: Run physics/CFD scatter pass followed by gather pass. The gather pass results in new physics properties for each cell.</li> 
+<li>GPU: Transfer gathered new physics properties back to CPU.</li> 
+<li>CPU: Transform new physics gathered velocities back into current frame world space parent relative coordinate spaces (these require double precision).</li> 
+<li>CPU: Update current cell position and properties based on gathered physics/CFD info.</li> <li>LOOP!</li></ol>
+<br>
+<b>Rough Optimization Budgeting</b>
+<br>
+When working on the engine pipeline design, I am always keeping track of rough estimated costs of key parts of the algorithm in terms of CPU cycles used, 
+CPU memory bandwidth, PCIe bandwidth, latency for PCIe bus transfers, GPU SPU (scaler processing unit) cycles used, GPU texture loading/filtering bandwidth, 
+GPU triangle setup bandwidth, and GPU ROP (raster operation processing) bandwidth.
+Once NVidia releases a GeForce 8 series profiling tool for Linux, I will be able to verify things like GPU cache performance and other critical factors, 
+but for now, it is just intelligent design with lots of testing.
+<br>
+<br>
+Maximum performance budget, I tend to try and stay way under these figures to insure a good FPS.
+<br>
+<br>
+<ol><li>GPU: 1450 MHz of ops * 32 SPUs = 46400 MHz of ops</li> 
+<li>GPU: 1 clk for basic ops</li> <li>GPU: 4 clk for complex ops</li> 
+<li>GPU: 32 GB/s of on card bus</li> <li>GPU: 725 tri/s of setup</li> 
+<li>GPU: 8 TAUs at 725 Mhz = 5800 Mhz texture loads</li> <li>GPU: 16bit texture loads cost 2x</li> 
+<li>GPU: 32bit texture loads cost 4x</li> <li>GPU: 8 ROPs at 725 Mhz = 5800 Mhz blends</li> 
+<li>GPU: 16bit blends cost 2x</li> <li>GPU: 32bit blends cost 4x</li> <li>CPU: 2 GHz</li> 
+<li>CPU: PCIe bus 4 GB/sec</li></ol> 
+<br>
+My compositing engine is the most optimized and expensive part of the pipeline, 
+using about 20% of my texture fetch and filter, 13% of my ROP, 
+but only 6% of my SPU, and under 1% of my triangle setup budget. 
+I also have room to move one of the two texture loads in the compositing fragment shader from a 2D to a 1D texture load, 
+requiring some extra math (SPU time), which should help keep much more texture reads cached if texture trashing becomes a problem.
+
+</div></body></html>
+
+
+
