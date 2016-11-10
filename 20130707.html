@@ -1,0 +1,10 @@
+<html><head><link rel="stylesheet" href="style.css"></head><body><div class="page">
+<h1>20130707 - Slab Hash</h1>
+<br>
+
+<i>Something I decided not to use but wanted to write down for possible future reference. This idea isn't new either...</i> Start with a slab size. Slab being some prime multiple of the size of a cacheline. Prime to increase cacheline set aliasing when cachelines of slabs are not always fully used. Take a large chunk of memory which has N slabs. Treat this memory as a hash table with something like <a href="http://code.google.com/p/smhasher/wiki/MurmurHash3">MurmurHash3</a> as a hash function. Instead of traditional {key, pointerToData} which usually implies usually 2 cache misses even with no key collisions, store {key, data} in the slab (avoids a second cache miss).
+
+</div></body></html>
+
+
+
