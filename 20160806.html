@@ -1,0 +1,39 @@
+<html><head><link rel="stylesheet" href="style.css"></head><body><div class="page">
+<h1>20160806 - Uber Shader Unrolling</h1>
+<br>
+Looking at running a compute only pass, no graphics waves to contend with on the machine, so it becomes relatively easy to think about occupancy.
+Target 4 waves per SIMD via a 4 wave work-group (one work-group per SIMD unit).
+That provides 4 work-groups sharing a Compute Unit (CU) and L1 cache.
+This is only 16/40 occupancy, but enough in theory to maintain a good amount of multi-issue of waves to functional units.
+Each wave gets 64 VGPRs, each work-group gets 16KB LDS (16 32-bit words/invocation on average).
+<br>
+<br>
+In this fixed context, one can leverage compile-time unrolling to manage variable register allocation for different sub-shaders in an uber-shader.
+Unrolling as in running more than one instance of the shader in the uber-shader at a given time.
+<br>
+<br>
+Unroll 2 in parallel = 32 VGPRs, 8 words LDS<br>
+Unroll 3 in parallel = 21 VGPRs, 5 words LDS<br>
+Unroll 4 in parallel = 16 VGPRs, 4 words LDS<br>
+<br>
+But it doesn't have to be this fixed.
+One can have variable blending of N parallel instances.
+Meaning as register usage starts to drain from one instance, start ramping up the other instance.
+Also enables instances to share intermediate computations.
+<br>
+<br>
+This more "pinned task" model with unrolling
+in theory in some cases (maybe really short shaders like particle blending) would allow better utilization of the machine, than separate kernel launches for everything.
+During shader start as the shader ramps up, the VGPRs allocated to it are under utilized.
+During shader ramp down towards exit, VGPRs are also under utilized.
+Unrolling can blend the fill and drain.
+<br>
+<br>
+Clearly there is also a question of unrolling out of instruction cache.
+
+
+
+</div></body></html>
+
+
+
