@@ -1,0 +1,139 @@
+<html><head><link rel="stylesheet" href="style.css"></head><body><div class="page">
+<h1>20160720 - Re Twitter: Thoughts on Vulkan Command Buffers</h1>
+<br>
+
+
+<i>Because twitter is too short ...</i>
+<br>
+<br>
+<b>API Review</b>
+<br>
+In Vulkan the application is free to create multiple VkCommandPools each of which can be used to allocate multiple VkCommandBuffers.
+However effectively only one VkCommandBuffer per VkCommandPool can be actively recording commands at a given time.
+The intent of this design is to avoid having a mutex when command buffer recording needs to allocate new CPU|GPU memory.
+<br>
+<br>
+<b>Usage/Problem Case</b>
+<br>
+The following hypothetical situation is my best understanding of the usage case as presented in fragmented max 140 character messages on twitter.
+
+Say one had a 16-core CPU,
+where each core did a variable amount of command buffer recording.
+
+The application will need at a minimum 16 VkCommandPools in order to have 16 instances of command buffer recording going in parallel (one per core).
+
+Say the application has a peak of 256 command buffers generated per frame,
+and cores pull a job to write a command buffer from some central queue.
+
+Now given CPU threading and preemption is effectively random,
+it is possible in the worst case that only one thread on the machine has to generate all 256 command buffers.
+
+In Vulkan there are two obvious methods one could attempt to manage this situation,
+
+<br>
+<br>
+(1.) Could pre-allocate 256 VkCommandBuffers on the 16 VkCommandPools, resulting in needing 4096 VkCommandBuffer objects total.
+<i>Unfortunately AMD's Vulkan driver currently has higher than desired minimum allocated memory for each VkCommandBuffer.
+On the plus side there is an active bug, number 98777 (if you want to reference this in an email to AMD),
+for resolving this issue.</i>
+<br>
+<br>
+(2.) Could alternatively allocate then free VkCommandBuffers at run-time each frame.
+<br>
+<br>
+Once bug 98777 is resolved with a driver fix, option (1.) would be the preferred solution from the above two options.
+<br>
+<br>
+<b>Digging Deeper</b>
+<br>
+Part of what concerns me personally about this usage case is that it implies building an engine 
+where VkCommandPool is effectively pinned to a specific CPU thread,
+and then <b>randomly asymmetrically loading each VkCommandPool</b>!
+
+For example, say in typical case each CPU thread builds on average the same amount of command buffers in terms of CPU and GPU memory consumption.
+
+In this mostly symmetrical load pattern, the total memory utilization of each VkCommandPool will be relatively balanced.
+
+Now say at some frequency one of the threads chosen randomly, and it's associated VkCommandPool, 
+is loaded with 50% of the frame's command buffers in terms of memory utilization.
+
+If VkCommandPools "pool" memory and keep it, then over time each VkCommandPool would end up "pooling" 50% of the memory required for all the frame's command buffers.
+Which in this case would be roughly 8 times what is required.
+<br>
+<br>
+<i>This problem isn't really Vulkan specific, it is a fundamental problem on anything which does deferred freeing of a resource.
+The amount of over-subscription in random asymmetrical load is a function of the delay before deferred free.
+Which ultimately becomes a balancing act between the overhead in run-time or synchronization cost for dynamic allocation, against the extra memory required.</i>
+<br> 
+<br>
+<b>Possible Better Solution?</b>
+<br>
+Might be better to un-pin VkCommandPool from CPU thread.
+Then instead use a few more VkCommandPools than CPU threads,
+and have each CPU grab exclusive access to a random VkCommandPool at run-time
+to use to build command buffers for jobs until after a set timeout,
+at which point it releases a given VkCommandPool, and then chooses the next free one to start work again.
+Note there is no mutex in here for acquire/release pool, but rather a lock-free atomic access to a bit array in say a 64-bit word.
+<br>
+<br>
+In this situation, assuming CPU/GPU memory overhead for a command buffer scales roughly with CPU load of filling said command buffer,
+regardless of how asymmetrical the mapping is of jobs to CPU threads, the VkCommandPools get loaded relatively symmetrically.
+<br>
+<br>
+<i>Another thing about CPU threading which is rather important IMO, is that the OS will preempt CPU threads randomly after they have taken a job,
+which can cause random pipeline bubbles. 
+As long as this is a problem, 
+it might be desirable to preempt the OS's preemption and instead manually yield execution to another CPU thread at a point which ensures no pipeline bubbles 
+(ie after finishing a job and releasing a lock on a queue, etc).
+The idea being to transform the OS's perception of the thread from being "compute-bound" thread (something which always runs until preemption) to something which looks like an interactive "IO-bound" thread (something which ends in self blocking).
+Maybe it is possible to do this by having more worker threads than physical/virtual CPU threads,
+and waking another worker, then blocking until woken again. 
+Something to think about...</i>
+
+<br>
+<br>
+<b>Transferring Command Buffers Across Pools?</b>
+<br>
+<i>I'll admit here I've been so Vulkan focused that I'm current out of touch with how exactly DX12 works.</i>
+Seems like the twitter claim is that the Vulkan design is fundamentally flawed because VkCommandBuffer is locked to a VkCommandPool at allocation-time,
+instead of being set at begin-recording-time like DX12.
+This sounds to me the same as (2.) at the top of this post,
+effectively making "Allocate" and "Free" very fast for command buffers in a given pool,
+just "Allocate" is now effectively "Begin Recording" in the DX12 model.
+Meaning just shuffling work around to different API entry points.
+Assigning the Pool at "Begin Recording" time does not do anything to solve the asymmetric Pool loading problem 
+caused by the desire to have Pools pinned to CPU threads for this usage case.
+<br>
+<br>
+<b>Baking Command Buffers - And Replaying</b>
+<br>
+As the number of command buffers increases, one is effectively factoring out the sorting/predication of commands which would otherwise be baked into one command buffer, 
+and deferring that sorting/predication until batch command buffer submit time.
+
+As command buffer size gets smaller, it can cross the threshold where it becomes more expensive to generate the tiny command buffers, 
+than to cache them and just place them into the batch submit.
+
+So if say one had roughly 256 command buffers in effectively everything outside of shadow generation and drawing, 
+meaning everything from compute based lighting through post processing,
+it is likely better to just cache baked command buffers instead of always regenerating them.
+<br>
+<br>
+<i>My personal preference is effectively "compute-generated-graphics",
+rending with compute only,
+mixed with fully baked command buffer replay (no command buffer generation after init time),
+and indirect dispatch to manage adjusting amount of work to run per frame ...</i>
+
+
+
+
+
+
+
+
+
+
+
+</div></body></html>
+
+
+
