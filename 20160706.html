@@ -1,0 +1,30 @@
+<html><head><link rel="stylesheet" href="style.css"></head><body><div class="page">
+<h1>20160706 - Low Cost Branching to Factoring Out Loop Exit Check</h1>
+<br>
+
+
+
+Threading to hide pipeline depth combined with an ISA which makes branching cheep is one goal.
+Specifically absolute branching with immediate destination in the opcode word 
+(single word branch/call, no adder), and instructions which include a return flag (make returns free).
+Enables easy computed branches, both for jump tables, and loops.
+Can factor out loop check into hierarchical call tree,
+<br>
+<br><tt>
+Do4: Unroll work four times; Return;<br>
+Do16: Call Do4; Call Do4; Call Do4; Jump Do4;<br>
+Do64: Call Do16; Call Do16; Call Do16; Jump Do16;<br>
+... etc ...
+</tt><br>
+<br>
+Can use a computed branch to jump into the tree for other loop counts.
+
+
+
+
+
+
+</div></body></html>
+
+
+
