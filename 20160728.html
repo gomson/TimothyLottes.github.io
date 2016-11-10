@@ -1,0 +1,50 @@
+<html><head><link rel="stylesheet" href="style.css"></head><body><div class="page">
+<h1>20160728 - Blink Mechanic for Fast View Switch for VR</h1>
+<br>
+
+<a href="https://www.pathlms.com/siggraph/events/609/video_presentations/31754">As seen in the SIGGRAPH Realtime section for Bound for PS4 PSVR around 42 minutes in this video</a>.
+Great to see someone making good use of the "blink mechanic" to quickly switch view in VR.
+Scene quickly transitions to black, to simulate eyelid closing, followed by fading back to a new view, simulating eyelid opening.
+<br>
+<br>
+My recommendation for the ideal VR display interface used this mechanic.
+
+Specifically "blink" to hide the transition of exclusive ownership of the Display between a "Launcher / VR Portal" application and the game.
+
+The advantages of exclusive app-owned Display for VR on PC would have been tremendous.
+
+For instance it then becomes possible to,
+<br>
+<br>
+(1.) Fully saturate the GPU. No more massive sections of GPU idle time.
+<br>
+<br>
+(2.) Render directly to the post-warped final image for a 2x reduction in shaded samples for Compute generated Graphics Non-Triangle based rendering, and pixel perfect image quality.
+<br>
+<br>
+(3.) Factor out shading to Async Compute, and only generate the view right before v-sync. Rendering just in time is better than time-warp: no more incorrect transparency, no more doubling of visual error for dynamic objects which are moving differently than the head camera tracking.
+<br>
+<br>
+(4.) Race the beam for the ultimate in low latency.
+<br>
+<br>
+(5.) Great MGPU scaling (app owned display cuts MGPU transfer cost by 4x).
+<br>
+<br>
+(6.) Have any GPU Programming API, even compute APIs, be able to work well in VR without complex cross-process interopt.
+<br>
+<br>
+(7.) Etc.
+<br>
+<br>
+Ultimately no one on the PC space implemented this, 
+and thus all my R&D on the ultimate VR experience got locked out and blocked by external process VR compositors,
+pushing me personally out of VR,
+and back to flat 3D where I still can actually push the limits, with good frame delivery, without artifacts, and with perfect image quality.
+
+
+
+</div></body></html>
+
+
+
