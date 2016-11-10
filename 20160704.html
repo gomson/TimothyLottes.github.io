@@ -1,0 +1,19 @@
+<html><head><link rel="stylesheet" href="style.css"></head><body><div class="page">
+<h1>20160704 - Relative Addressing With XOR - Removing an Adder</h1>
+<br>
+
+Could be an interesting compromise: use XOR instead of ADD for relative addressing to remove an adder. Specifically,
+<br>
+<br>
+<tt>Address = AddressRegister XOR Immediate</tt>
+<br>
+<br>
+Forces the programmer to keep address register on some power of two alignment.
+With caches and/or parallel access to banked memory, this would be a bad.
+But likely fine for a core with a private memory, and code written in assembly.
+
+
+</div></body></html>
+
+
+
