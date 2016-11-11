@@ -1,0 +1,48 @@
+<html><head><link rel="stylesheet" href="style.css"></head><body><div class="page">
+<h1>20150714 - 1536-1 : The Programmer Addiction = Feedback</h1>
+<br>
+
+Continuing on the 1536-byte loader based system.
+Interpreter finished, under the 1536-byte goal.
+Second major goal is to get to the instant feedback productivity addiction loop going: modify, get feedback, repeat.
+Have simple ASCII to custom 64-character set encoding converter,
+and way to include the converter source text starting at sector 3 in the boot loader.
+First major test, getting an infinite loop or infinite reboot working.
+Source without any syntax coloring,<br>
+<br>
+<pre>
+\1536-1 --- BOOTUP INTO SPIN OR REBOOT LOOP\
+
+800000,     \PUSH BOOT-UP COMPILE POSITION\
+BOOT:       \STORE IN BOOT WHICH GETS CALLED TO RUN SYSTEM\
+FEEBFEEB,/  \WRITE OPCODE TO JUMP TO SELF\
+EAEAEAEA,/  \OR WRITE OPCODE TO CRASH ON INVALID INSTRUCTION\
+]           \END COMPILE - LOADER WILL THEN JMP TO BOOT WORD\
+</pre>
+<br>
+Loader sets up memory with dictionary at 1MB (2MB chunk with 1MB overflow), copies source to 4MB (4MB chunk maximum), then starts the compile position at 8MB (so 8MB and on is the rest of the memory on the system). Had one major bug getting the interpreter up, forgot that \ in NASM results in a line continuation even when in a comment, removing a line of a lookup table resulting in a crash.
+Tracking down bugs is very easy, add "JMP $" or "db 0xEA" in NASM to hang or reboot respectively.<br>
+<br>
+<b>Adjustments</b>
+<br>
+Adjusted the character syntax.
+<tt><br>
+- - Negate the 64-bit number, add dash to the string.<br>
+. - Lookup word in dictionary, and push 64-bit value from word entry onto data stack.<br>
+, - Push 64-bit number on data stack.<br>
+: - Lookup word in dictionary, pop 64-bit value from data stack to word entry.<br>
+; - Lookup word in dictionary, interpret string starting at address stored in word entry.<br>
+[ - Lookup word in dictionary, store pointer to source after the [ in the word entry, skip past next ].<br>
+] - When un-matched with ], this ends interpretation via RET.<br>
+\ - Ignore text until the next \.<br>
+/ - Lookup word in dictionary, call to address stored in dictionary entry.<br>
+` - Lookup word in dictionary, push address of word on data stack.<br>
+</tt><br>
+Space and every character above except the - char, clear the working word string and number.
+So , results in pushing a zero on the data stack.
+And / results in calling the empty word, which I've setup as a word that pops from the data stack and writes a 32-bit word to the compile position, then advances the compile position.
+This provides the base mechanics to start to create opcodes via manual hand assembly and build out an assembler
+
+</div></body></html>
+
+
