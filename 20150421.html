@@ -1,0 +1,24 @@
+<html><head><link rel="stylesheet" href="style.css"></head><body><div class="page">
+<h1>20150421 - Look No Triangles : Scatter vs Gather</h1>
+<br>
+
+
+
+
+
+There are a bunch of people working-on and succeeding in non-triangle rendering. With GPU perf still climbing IMO it is possible to return to the golden age of a different kind of software rendering: the kind done in a pipeline built out of compute shaders.<br>
+<br>
+In my sphere tracing of math based SDF fields I was purely ALU bound, tracing to the limit of floating point precision. The largest performance win was found by doing a many-level hierarchical trace (starting with very coarse grain empty space skipping). But the limit of all this is just a log reduction of the number of steps in the search, still requires many search steps per pixel. And when doing a memory based trace (instead of a math based trace) the search is just a very long latency chain with divergent access patterns. Tracing via searching on the GPU hits a wall. To make matters worse when tracing, the ALU units are loaded up with work involved in tracing, instead of something useful.<br>
+<br>
+The alternative to this is to switch to a mostly scatter based design. A large amount of the tree structure traversed each frame in a gather based approach is similar across frames. Why not just have the tree stored mostly expanded in memory based on the needs of the view. Then expand or collapse the tree based on the new visibility needs of the next frame. Rendering is then a mostly scatter process which reads leaves in the tree once. Reads of memory can now be coherent, and ALU can be used for things more interesting than search. Scatter will be somewhat divergent, but that cost can be managed by loading up enough useful ALU work in parallel. There are a lot of ways to skin this. Nodes of the tree can be bricks. Bricks can be converted into little view based depth sprites, then binned into tiles and composited. Seems as if bricks converted into triangle meshes and rasterized is the popular path now, but still using the CPU to feed everything. This could get much more interesting when the GPU is generating the cached geometry bricks: artistically controlled procedual volume generation...
+
+
+
+
+
+
+
+</div></body></html>
+
+
+
