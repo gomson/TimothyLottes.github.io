@@ -1,0 +1,61 @@
+<html><head><link rel="stylesheet" href="style.css"></head><body><div class="page">
+<h1>20140814 - HRAA And Coverage and Related Topics</h1>
+<br>
+
+<a href="http://michaldrobot.com/2014/08/13/hraa-siggraph-2014-slides-available/">Michal Drobot's HRAA Slides</a>, great talk, I've read it a few times now. Really good seeing people get serious about solving the aliasing problem.<br>
+<br>
+<b>Coverage Fail Case?</b>
+<br>
+Start with a simple example of two color and depth samples {N,S} (with associated coverage samples). And two extra coverage samples {w,e}. In the following pattern,<br>
+<br>
+<tt>.N..<br>
+...e<br>
+w...<br>
+..S.</tt><br>
+<br>
+Starting with all cleared (unknown) case,<br>
+<br>
+<tt>._..<br>
+..._<br>
+_...<br>
+.._.</tt><br>
+<br>
+Render a triangle in the foreground which covers {S,w,e},<br>
+<br>
+<tt>._..<br>
+...s<br>
+s...<br>
+..S.</tt><br>
+<br>
+Now render a triangle in the background which covers {N,S,w,e}, this for instance could be a skybox.
+The N sample passes the depth test, the S sample fails the depth test,
+and the {w,e} coverage samples get set to unknown 
+(coverage samples have no depth, raster unit does not know which triangle is in front,
+because a coverage sample's associated depth sample won't work in sloped cases).
+The result being the same as if there are no coverage samples,<br>
+<br>
+<tt>.N..<br>
+..._<br>
+_...<br>
+..S.</tt><br>
+<br>
+Front-to-back drawing order (the best order for performance) clears out coverage information.
+Only back-to-front draw order (the worst for overdraw) builds coverage as front triangles evict and optional replace coverage sample association.<br>
+<br>
+This is ultimately why I abandoned the idea of using coverage samples for reconstruction.<br>
+<br>
+Since then I've learned that coverage might work if there is a front-to-back full z-pre-pass, followed by rendering back-to-front with depth test passing if depth is nearer or equal. This process would likely re-restore coverage. This likely explains why EQAA and CSAA actually seemed to work when they were first introduced, because engines did do z-pre-passes at that time. Back when I tried coverage based reconstruction I never did a z-pre-pass (couldn't afford to submit the geometry again).<br>
+<br>
+The CRAA LUT in Michal Drobot's paper is a great idea for a z-pre-passing engine working on a platform which provides coverage information.<br>
+<br>
+<b>FLIPQUAD</b>
+<br>
+For any hardware which provides programmable sample locations in a granularity of 2x2 pixels (or beyond), one can do better than the flipquad setup. On slide 70, notice blue samples of two pixels {0,2} and {1,3} align on vertical lines.<br>
+<br>
+<b>BFCEE</b>
+<br>
+Tried before a few times, never found it to work well as just blending in more of the source as a function of approaching full pixel offset, perhaps I did something wrong, going to need to try this again!<br>
+
+</div></body></html>
+
+
