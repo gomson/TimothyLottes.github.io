@@ -1,0 +1,40 @@
+<html><head><link rel="stylesheet" href="style.css"></head><body><div class="page">
+<h1>20150624 - AMD Fury X (aka Fiji) is a Beast of a GPU Compute Platform</h1>
+<br>
+
+
+
+<b>Compute Raw Specs</b>
+<br>
+Raw specs from wikipedia adjusted to per millisecond: comparing what the two vendors built around 600 mm^2 on 28 nm,<br>
+<br>
+<tt>
+AMD FURY X: 8.6 GFlop/ms, 0.5 GB/ms, 0.27 GTex/ms<br>  
+NV TITAN X: 6.1 GFlop/ms, 0.3 GB/ms, 0.19 GTex/ms</tt><br>
+<br>
+Or the same numbers in operations per pixel at 1920x1080 at 60 Hz,<br>
+<br>
+<tt>
+AMD FURY X: 69 KFlop/pix, 4.0 KB/pix, 2.2 KTex/pix<br>
+NV TITAN X: 49 KFlop/pix, 2.4 KB/pix, 1.5 KTex/pix</tt><br>
+<br>
+<i>Think about what is possible with 69 thousand flops per pixel per frame.</i><br>
+<br>
+<b>HBM</b>
+<br>
+HBM definitely represents the future of bandwidth scaling for GPUs:
+a change which brings the memory clocks down and bus width up (512 bytes wide on Fury X vs 48 bytes wide on Titan X).
+This will have side effects on ideal algorithm design: ideal access granularity gets larger.
+Things like random access global atomics and random access 16-byte vector load/store operations 
+become much less interesting (bad idea before, worse idea now).
+Working in LDS with shared atomics, staying in cache, etc, becomes more rewarding.
+<br>
+<br>
+
+
+
+
+</div></body></html>
+
+
+
