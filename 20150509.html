@@ -1,0 +1,162 @@
+<html><head><link rel="stylesheet" href="style.css"></head><body><div class="page">
+<h1>20150509 - OS Project : 6 - Hashing</h1>
+<br>
+
+
+
+
+
+<i>Been a while since I had any time to work on this project.
+Renamed as I've done some major design changes...</i><br>
+<br>
+<b>Axed</b>
+<br>
+Dropping source-less programming part.
+Source-less worked great for x86 programming, 
+however there are a few things I didn't like about it.
+Little issues like having 2 words for each common forth construct 
+like "CALL WORD" instead of just "WORD".
+Larger issues being the requirement to have another editor 
+to generate complex data or non-x86 machine code.<br>
+<br>
+<b>From the Ashes</b>
+<br>
+Pulled the old work into a new bootloader.
+This time rapid prototyping using just NASM.
+Eventually I'll have to rewrite the bootloader 
+in the source/language I end up creating. 
+Switched back to 64-bit long mode (see why below).
+Running with 1GB pages since long mode forces page tables.<br>
+<br>
+<b>Re-Thinking The Forth Dictionary</b>
+<br>
+Time off from this project brought forth some new ideas
+addressing the original motivation for going source-less:
+(a.) don't like linear searches at interpreter-time 
+through large dictionaries (simple forth implementation),
+(b.) don't like how hashing (complex forth implementation) takes a bunch of ALU-time,
+(c.) really don't like how dynamic hashing can leave 75% of the cache unused,
+(d.) and still want to have full 32-bit values in source without multiple source tokens.
+<br><br>
+Solving (d.) is easy, just switch to 64-bit source tokens.
+Source is now 2x the size, but 32-bit immediates are trivial,
+and words can now use 10 characters instead of 5.
+Source is a prefetchable linear read,
+so the "more memory for more simple" trade is worth it to me.
+
+<br>
+<br>
+<b>Now Can Hashing be Made Better?</b>
+<br>
+Solving (b.): how about factoring everything in the hashing algorithm 
+except the "AND" operation 
+into the string encoding itself?
+The tokens encode strings as 60-bit integers.
+Just need to switch from a generic 6-bits per character,
+to something where the characters are encoded in a way that they effect all bits.<br>
+<br>
+One thing I tried is to use a reversible cellular automata (CA) like Wolfram Rule 30R.
+So strings in tokens are kept in memory in the form 
+after being processed through N steps of applying the CA.
+Editor to display the string simply has to reverse the CA process.<br>
+<br>
+To test the theory I first grabbed an english dictionary,
+then hashed to {256, 512, 1K, 2K, ... 512K, 1 M} entry tables,
+and tracked the {min,max,average} table bin counts.
+Comparing the reversible CA to just the 64-bit finalizer in MurmurHash3
+(not reversible but provides a good baseline): 
+both have similar results.<br>
+<br>
+Also tested against a dictionary with all possible {1,2,3} character strings
+(including symbols and numbers). Results are again similar.<br>
+<br>
+Second I tried a recursive interval encoding:
+each character is encoded in the interval of the parent character.
+First character starts with the full 0 to 2^60-1 interval.
+Character 63 is a special terminal character
+(signals no more characters are encoded).
+Character 63 gets a smaller interval,
+allowing the other characters to get an extended interval 
+designed to spread out the value  
+when ANDed to a power of two.
+This works similar in theory to arithmetic encoding,
+except this has constant probabilities.
+Multiplers used to encode each character
+(starting with the 1st character and going to the last),
+<br>
+<br>
+64*64*64*64*64*64*64*64*64 +63*63*63*63*63*63*63*63,<br>
+64*64*64*64*64*64*64*64 +63*63*63*63*63*63*63,<br>
+64*64*64*64*64*64*64 +63*63*63*63*63*63,<br>
+64*64*64*64*64*64 +63*63*63*63*63,<br>
+64*64*64*64*64 +63*63*63*63,<br>
+64*64*64*64 +63*63*63,<br>
+64*64*64 +63*63,<br>
+64*64 +63,<br>
+64 +1,<br>
+1,<br>
+<br>
+This evenly distributes the effect of a character across all bits.
+The synthetic all {1,2,3} length string case performs better 
+with this encoding. 
+The english dictionary does not see much of an improvement.
+<br>
+<br>
+A forth option would be to just use arithmetic encoding,
+or predictive arithmetic encoding on the string.
+I suspect this would have similar results 
+on the english dictionary as the above 
+fixed interval encoder had on the all possible strings case.
+However I didn't try it, 
+because I don't have any great way to 
+get symbol probabilities for source that does not exist yet,
+and current results are probably good enough.<br>
+<br>
+
+<b>Hash Cache Utilization</b>
+<br>
+Solving (c.) hash cache utilization: how about a software hash cache.
+Source tends to have a small working set of words, 
+even if the dictionary gets quite large.
+Now that hashing to different size tables is free via AND,
+I can split the hash table into two parts: a 256 entry table (or larger)
+which will effectively always be filled and in hardware cache,
+and a much larger table for software misses which still wastes 75% of the hardware cacheline. The software hash cache contains the following per entry,<br>
+<br>
+{4-byte data, 4-byte larger table address, 8-byte string}<br>
+<br>
+The larger table is inclusive.
+Eviction of the small hash uses the larger table address,
+to avoid searching (or probing) for the right entry.<br>
+<br>
+
+<b>Moving On</b>
+<br>
+This should have the right combination of being simple enough
+and fast enough to avoid triggering the "something is wrong" 
+re-design impulse again.<br>
+<br>
+The high-level view I have of the OS
+is effectively an ultra-high-power micro-controller
+that boots into a forth editor like a C64 boots into basic...
+<br>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</div></body></html>
+
+
+

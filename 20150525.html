@@ -1,0 +1,56 @@
+<html><head><link rel="stylesheet" href="style.css"></head><body><div class="page">
+<h1>20150525 - OS Project : 7 - PS/2 and Misc</h1>
+<br>
+
+
+Just started back up again after a long break.
+Finished up the PS/2 driver.
+Simplified keyboard interface to one 64-bit bit array in memory,
+and a simple polling function.<br>
+<br>
+<pre>   __0 __1 __2 __3 __4 __5 __6 __7 __8 __9 __A __B __C __D __E __F
+0| 0   1   2   3   4   5   6   7   8   9   A   B   C   D   E   F
+1| G   H   I   J   K   L   M   N   O   P   Q   R   S   T   U   V
+2| W   X   Y   Z   `   -   =   [   ]   \   ;   '   ,   .   /   SPC
+3| LF  RT  UP  DN  HOM END PUP PDN INS DEL BS  TAB RET SHF CTL ALT</pre>
+<br>
+Key down sets a bit.
+Key release clears bits for {SHF, CTL, ALT} only.
+It is up to the application to clear bits otherwise.
+Ended up being a good design choice as keys like '\'
+immediately generate release commands even when held down
+on my keyboard.
+Key bitmap organized to make editor usage (like key-to-hex conversions) simple.
+Keys limited to what I expect to use, and
+supporting everything on typical <a href="http://www.xgaming.com/support/questions/17/PC+%26+MAC+%28Mode1%29+Button+Layout">PC arcade controllers</a>.<br>
+<br>
+<b>Multitasking</b>
+<br>
+Humans and modern computers share a common thread: 
+neither is any good at multitasking.
+The context of multitasking in this post is not async IO,
+but rather running multiple applications at the same time on the same CPU core.
+Suspect that the needs of multitasking change quite a bit 
+at the point where nearly everything on the machine is 
+perceptually instantaneous: 
+as it would be once the 30 years 
+of 40% yearly compounding complexity dept is removed.
+SSDs have throughput similar to last-level cache on early P4 era PCs.
+Logical end point: CPU cores owned by the applications themselves,
+no single-core multitasking, no preemption.
+App using power control to drop CPU core to lowest power state required 
+to sustain a hard real-time user interface.
+
+
+
+
+
+
+
+
+
+
+</div></body></html>
+
+
+
