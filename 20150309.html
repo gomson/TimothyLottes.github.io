@@ -1,0 +1,18 @@
+<html><head><link rel="stylesheet" href="style.css"></head><body><div class="page">
+<h1>20150309 - Quick Thoughts on Strobbed LCD Displays for VR Perf Proxy</h1>
+<br>
+
+
+
+Using numbers from <a href="http://www.roadtovr.com/valve-talks-advanced-vr-rendering-live-blog-5pm-pst/">Alex Vlachos's Vive VR Talk at GDC</a>, Vive with stencil optimization and super-sampling required for regular rendering: 378 Mpix/s (rectangular projection), or with just stencil optimization for ray tracing: 193 Mpix/s (derived from the Valve numbers, no 1.4x multiplier, shoot rays in warped view directly). Interesting that tracing or non-standard rendering tech might be able to leverage a 50% cut in the number of pixels to process.<br>
+<br>
+Looking for a non-VR perf proxy? Something non-VR to target to get in the ballpark for frame cost for VR? For the regular rendering target: 2560x1440 at 100 Hz is still under the Mpix/s target. The 100 Hz figure is the highest ULMB strobbed refresh supported by the first strobbed IPS LCD panel: <a href="http://www.tftcentral.co.uk/reviews/acer_xb270hu.htm">Acer XB270HU</a>. Other than the viewing angle advantage of that IPS panel, it has roughly the same {gamut, brightness, etc} as the 1080p TN <a href="http://www.tftcentral.co.uk/reviews/benq_xl2720z.htm">BenQ XL2720Z</a> (roughly $450), and the TN has the advantage of supporting ULMB strobbed refresh all the way up to 144 Hz. For 1440p personally I think the larger <a href="http://orwww2.benq.com/product/monitor/xl2730z/">BenQ XL2730Z</a> is a better option than the Acer: the BenQ supports the VESA Standard Adaptive-Sync instead of being vendor locked for adaptive frame rate. Getting back to the numbers: 1920x1080 at 120 Hz is roughly 1.3x the "ray tracing" target for Vive, and 1920x1080 at 144 Hz is roughly 0.79x the "regular rendering" target (so would need some amount of super-sampling to be a perf proxy). It would be relatively easy to use the 1080p BenQ as a low persistence non-VR perf proxy for either case.<br>
+<br>
+
+
+
+
+</div></body></html>
+
+
+

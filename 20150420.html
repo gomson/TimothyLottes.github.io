@@ -1,0 +1,48 @@
+<html><head><link rel="stylesheet" href="style.css"></head><body><div class="page">
+<h1>20150420 - From Scratch Bug 2 : Source-Less Programming</h1>
+<br>
+
+
+
+<i>This is a disruptive idea which comes back periodically: source-less programming.
+Is it possible to efficiently program at a level even lower than an assembler?</i><br>
+<br>
+The general idea is that the editor is now something similar to an enhanced hex editor which edits a binary image directly.
+Lowest memory is split into three parts {{running image, annotations for edit image}, edit image}.
+The {running image, annotations for edit image} is the boot image.
+The {edit image} is working space which gets snapshot replacement for {running image} on a safe transition zone.
+The "annotation" section is what enables human understanding of the binary image.<br>
+<br>
+<b>Words</b>
+<br>
+One way to keep the system very simple is to always work in 32-bit words.
+A 32-bit word in memory is one of four things {data, opcode, absolute address, rip relative address}.
+Data is easily handled by the hex editor part.
+The annotation could provide a name for the data or a comment.
+Opcodes in x86 can be complex but it is easy to simplify.
+Start with something similar to forth zero-operand and one-operand operations (calls, etc).
+Make all operations padded to 32-bit alignment (x86-64 can use the 2e ignored prefix to pad).
+A call for instance becomes {32-bit opcode for call, 32-bit rip relative branch address}.
+Or a global load becomes {32-bit opcode for load, 32-bit rip relative branch address}.
+Annotation memory can provide a name for the opcode.
+Annotation can provide a tag for each word in memory which marks 
+if the memory is a relative or absolute address (word gets a different color based on tag similar to color forth).
+Addresses can be auto annotated by displaying the annotation associated with the destination.
+Editor works on the {edit image}, 
+with insert and delete of words automatically adjusting all the words tagged as address
+(effectively relinking at edit time).
+The {edit image} can also keep a mapping of original {running image} address
+so that it is possible to view the live values of any data.
+Editor provides something to easily be able to write an annotation 
+and have the associated opcode or address automatically get updated.
+For example type the opcode name and the 32-bit value is automatically updated.
+Very simple and yet powerful minimal tool.
+
+
+
+
+
+</div></body></html>
+
+
+
