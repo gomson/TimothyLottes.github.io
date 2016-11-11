@@ -1,0 +1,132 @@
+<html><head><link rel="stylesheet" href="style.css"></head><body><div class="page">
+<h1>20150715 - 1536-2 : Assembling From the Nothing</h1>
+<br>
+
+<i>Started bringing up a limited subset x86-64 assembler.
+The full x86-64 opcode encoding space is an unfortunate beast of complexity which I'd like to avoid.
+So I did...</i><br>
+<br>
+<b>Compromises</b>
+<br>
+This prototype sticks to only exactly 4-byte or 8-byte instructions 
+(8-byte only if the instruction contains a 32-bit immediate/displacement).
+The native x86-64 opcodes are prefix padded to fill the full 4-byte word.
+Given that x86-64 CPUs work in chunks of 16-bytes of instruction fetch,
+this makes it easy to maintain branch alignment visually in the code.
+Since x86-64 float opcodes are natively 4-bytes without the REX prefix,
+I'm self limiting to only 8 registers for this assembler,
+which is good enough for the intended usage.
+I'm not doing doubles and certainly not wasting time on vector instructions (have an attached GPU for that!). 
+Supported opcode forms in classic Intel syntax,<br>
+<br>
+<tt>
+op;<br>
+op reg;<br>
+op reg,reg;<br>
+op reg,imm32;<br>
+op reg,[reg];<br>
+op reg,[reg+imm8];<br>
+op reg,[reg+imm32];<br>
+op reg,[imm32];<br>
+op reg,[reg+reg]; <- For LEA only.</tt><br>
+<br>
+This is a bloody ugly list
+which needed translation into some kind of naming
+in which "op" changes based on the form.
+I borrowed some forthisms:
+@ for load, ! for store.
+Then added ' for imm8,
+" for imm32, and # for RIP relative [imm32].
+A 32-bit ADD and LEA ends up with this mess of options
+(note . pushes word value on the stack, so A. pushes 0 for EAX in this context,
+and , pushes a hex number, and / executes the opcode word which assembles the instruction to the current assembly write position),<br>
+<br><tt>
+A.B.+/ .......... add eax,ebx;<br>
+A.1234,"+/ ...... add eax,0x1234;<br>
+A.B.@+/ ......... add eax,[rbx];<br>
+A.B.12,'@+/ ..... add eax,[rbx+0x12];<br>
+A.B.1234,"@+/ ... add eax,[rbx+0x1234];<br>
+A.LABEL.#@+/ .... add eax,[LABEL]; <- RIP relative<br>
+A.B.12,'+=/ ..... lea eax,[rbx+0x12];<br>
+A.B.C.+=/ ....... lea eax,[rbx+rcx*1];</tt><br>
+<br>
+Then using L to expand from 32-bit operand to 64-bit operand,<br>
+<br><tt>
+A.B.L+/ .......... add rax,rbx;<br>
+A.1234,L"+/ ...... add rax,0x1234;<br>
+A.B.L@+/ ......... add rax,[rbx];<br>
+A.B.12,L'@+/ ..... add rax,[rbx+0x12];<br>
+A.B.1234,L"@+/ ... add rax,[rbx+0x1234];<br>
+A.LABEL.L#@+/ .... add rax,[LABEL]; <- RIP relative<br>
+A.B.12,L'+=/ ..... lea rax,[rbx+0x12];<br>
+A.B.C.L+=/ ....... lea rax,[rbx+rcx*1];</tt><br>
+<br>
+<b>Source Example With Google Docs Mockup Syntax Highlighting</b>
+<br>
+Font and colors are not what I'm going for, just enough to get to the next step.
+This is an expanded example which starts building up enough of an assembler
+to boot and clear the VGA text screen.
+Some of this got copied from older projects in which I used "X" instead of "L" to mark the 64-bit operand
+(just noticed I need to fix the shifts...).
+I just currently copy from this to a text file which gets included into the boot loader on build.<br>
+<br>
+<i>(Lost Image Here When Minus Went Down)</i><br>
+<br>
+<b>From Nothing to Something</b>
+<br>
+This starts by semi-self-documenting hand assembled x86 instructions via macros.
+So "YB8-L'![F87B8948,/]" reads like this,<br>
+<br>
+(1.) Y.B.8-,L'! packed to a word name YB8-L'! with tag characters removed.<br>
+(2.) [ which starts the macro.<br>
+(3.) F87B8948 which is {48 (REX 64-bit operand), 89 (store version of MOV), 79 (modrm byte: edi,[rbx+imm8]), F8 (-8)}.<br>
+(4.) , which pushes the number on the data stack.<br>
+(5.) / which after , executes the empty word, which pops the data stack and writes 32-bit to the asm position.<br>
+(6.) ] which ends the macro.<br>
+<br>
+Later YB8-L'! with ; appended can be used to assemble that instruction by interpreting the macro.<br>
+<br>
+The first assembled words are $ which pushes the current assembly position on the stack,
+and $DRP (which is actually a bug which needs to be removed).
+The $! pops an address from the data stack, and stores the current assembly position to given address.
+This is later used for instruction build macros which do things like PSH` where the ` results in the dictionary address for the PSH word to be placed on the data stack.
+The end game is getting to the point where given one of the opcode forms,
+it is possible to write the following to produce a function which compiles an opcode,<br>
+<br>
+<tt>C033403E,^`_;</tt><br>
+<br>
+Which pushes the 4-byte opcode base 0xC033403E, then the opcode name ^ for XOR, then runs the _ macro which assembles this into:<br>
+<br><tt>
+MOV eax,0xC033403E;<br>
+JMP X86-RM;</tt><br>
+<br>
+Immediately afterwards it is possible to execute the ^ word (call it) and assemble an XOR instruction.
+The X86-RM expects to get the REG and RM operands from the data stack with base instruction opcode data in EAX.<br>
+<br>
+<b>Making a Mess to Clean Up</b>
+<br>
+This about concludes the worst part of getting going from nothing,
+except for the PTSD dreams where people only speak in mixed hex and x86 machine code: FUCOM! REX DA TEST JO. 
+When placed into final context there will be a few KB of source to build an assembler which covers all functionality I need for the rest of the system.
+At this point I can easily add instructions and a few more of the opcode forms as they are they are needed.
+And it becomes very easy to write assembly like this,<br>
+<br>
+<tt>A.A.^/ Y.B8000,"/ C.1F40,"/ L!REP/</tt><br>
+<br>
+Which is this in Intel syntax,<br>
+<br>
+<tt>
+xor eax,eax; <- set eax to zero<br>
+mov edi,0xB8000; <- VGA text memory start address<br>
+mov ecx,0x1F40; <- 80x50 times two bytes per character<br>
+cld;<br>
+rep storq; <- using old CISC style slow form to "do:mov [edi],rax;add rdi,8;dec rcx;jnz do;"</tt><br>
+<br>
+
+ 
+
+
+
+</div></body></html>
+
+
