@@ -1,0 +1,31 @@
+<html><head><link rel="stylesheet" href="style.css"></head><body><div class="page">
+<h1>20150722 - 1536-3 : Simplify, Repeat</h1>
+<br>
+
+Night 3 on the 1536 project, decided to make some changes before going full ahead with writing an editor.<br>
+<br>
+(1.) Switched the boot loader to not relocate to zero. 
+Now leaving the BIOS areas alone, I doubt I'll ever go back to real mode after switching to long mode, 
+this ends up making the code easier, and provides room for the next change.<br>
+<br>
+(2.) Switched the boot loader to fetch the first 15 tracks instead of just 1 track.
+Now have a little over 472KB of source to work with on boot,
+which is effectively infinite for this project.
+The motivation for this change was the realization that x86-64 assembly source would get big.
+Don't want to change this later. 472KB is close to the maximum without checking for things like EBA, or handling non-full-track reads.<br>
+<br>
+(3.) Switched to an easier source model. Lines are now always 64 characters long. 
+Comments are switch to a single \ which functions like the C // style comment, ignoring the rest of the line.
+Since lines are always 64 bytes (cacheline sized and aligned),
+the interpreter can quickly skip over comments.
+This is a trade in increased source size, for simplification of the editor:
+fixed size lines makes everything trivial.<br>
+<br>
+(4.) Making a convention that syntax highlighting with color only has a line of context.
+Which translates into don't let things wrap. Easy.<br>  
+
+
+</div></body></html>
+
+
+
