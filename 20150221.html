@@ -1,0 +1,58 @@
+<html><head><link rel="stylesheet" href="style.css"></head><body><div class="page">
+<h1>20150221 - Great Example of Horrible API Interface Design</h1>
+<br>
+
+
+Linux gamepad support (via /dev/input/event) is one of the best examples of horrible interface design that I can remember. It should serve as a reminder of "<i>how not to do it</i>".<br>
+<br>
+<b>(1.) Sparsely Segmented IDs</b>
+<br>
+Every large gap in a sequence of IDs say for input event codes has an associated increase in complexity for the developer: results in special branching, etc.<br>
+<br>
+<b>(2.) Mix of Same Buttons With Different and Similar IDs on Different Devices</b>
+<br>
+There is a dead obvious common mapping between XBOX and PLAYSTATION controllers which should be used for common IDs.
+When instead the devices have subsets of different IDs for the same buttons, this results in angry developers.<br>
+<br>
+<b>(3.) The Same IDs Getting Used for Different Buttons on Different Devices</b>
+<br>
+Another example of the same disease: creating extra complexity for the developer.
+The point of a interface is to reduce complexity.
+When the app needs to special case the device, right the app is now writing the driver too.<br>
+<br>
+<b>(4.) Using Base 10 Numbering Without Leading Zeros</b>
+<br>
+Talking about the ordering of "event#" in "/dev/input/event" file names.
+Instead of something dead simple for a program like just "/dev/input/event##" where "##" is a hex number with a leading zero when under 0x10,
+lets instead make it base ten and require the developer to special case numbers under 10 (remove the leading zero).
+Fail.<br>
+<br>
+<b>(5.) Keeping Information Used Together On Unaligned Memory</b>
+<br>
+For example, "<tt>struct input_id { __u16 bustype; __u16 vendor; __u16 product; __u16 version; };</tt>", 
+it should be dead obvious that many developers would want to load "{vendor, product}" as a 32-bit value.<br>
+<br>
+<b>(6.) Providing No Good Way to Know if a Device is a Gamepad</b>
+<br>
+The logic of the interface seems to be that developers need to keep an up-to-date {vendor, product} table for all current and future gamepads,
+this way they can write all the special case per device code required, or alternatively an even worse option of using a string table by device name.<br>
+<br>
+<b>(7.) Resorting To User-Space Daemons to Translate</b>
+<br>
+Fantastic idea. First lets add extra latency to input.
+Second lets make it so that applications which handle the native /dev/input/event(s) manually 
+now see duplications of the same device as some other kind of device,
+but with no obvious way to know the device was duplicated?
+Third lets push the problem to the user, creating another thing which needs to be configured by an expert and can easly go wrong.<br>
+<br>
+<b>Suggestions on How to Fix This Mess</b>
+<br>
+Add INPUT_PROP_GAMEPAD so devs instantly know if the device is a "gamepad" or not.
+Any device which has the INPUT_PROP_GAMEPAD property uses a standard common set of contiguous input event codes.
+<br>
+ 
+
+
+</div></body></html>
+
+

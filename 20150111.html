@@ -1,0 +1,67 @@
+<html><head><link rel="stylesheet" href="style.css"></head><body><div class="page">
+<h1>20150111 - Leaving Something for the Imagination</h1>
+<br>
+
+
+Lack of information can invoke the perfect reconstruction of the mind.
+For visuals, seems like the deepness and slope of the uncanny valley is proportional to the spatial temporal resolutions of the output device.
+This 4K and eventual 8K crazyness, while awesome for 2D and print, has an unfortunate consequence for real-time realistic 3D: 
+available perf/pixel tanks simultaneously as required perf/pixel skyrockets due to the increased correctness required for perceptual reality.<br>
+<br>
+The industry continues to shoot itself in the foot focusing on quantity instead of quality,
+raising the baseline cost required for digital 3D content to climb out of the uncanny valley.<br>
+<br>
+The industry also seems to be on a roll reducing the quality of display technology.
+Sitting through an "IMAX" film at a DLP based theater destroyed the respect I had for that brand.
+Paying extra for a "cubism" filter applied to what otherwise might have been a good experience is not what I had in mind when going to the theater.
+Quite a shock for someone who grew up with analog IMAX and OMNIMAX (IMAX projected in a dome).<br>
+<br>
+Scan-and-hold LCDs have killed the quality of motion, and strobed LCDs have insane frame-rate requirements compared to a similar experience on a CRT.
+With typical HDTVs and LCD displays, 60Hz sits in the no-man's land 
+between having more perf/pixel for something visually interesting,
+and having enough frame-rate on a scan-and-hold device to remove enough blur in motion (120Hz and higher required).
+For this scan-and-hold generation the true purpose of the "motion-blur filter" 
+is not to add realistic motion blur, but remove enough visual quality to mask the distortion caused by scan-and-hold in motion.<br>
+<br>
+<b>Making Lemonade</b>
+<br>
+Display technology trends provide a powerfull polarization: 
+general flexible rendering solutions attempting to solve all problems will result in mediocre results
+(jack of all trades and the master of none of them). 
+IMO everything interesting can only be found by sacrificing something 
+others view as required, 
+but which enables you to do something otherwise impossible.<br>
+<br>
+Giving up frame-rate, for example the hot path for realistic rendering on PC:
+leverage variable refresh rate (to be able to simultaneously maximize the quality of animation and GPU utilization),
+render letterboxed around 30Hz (to maximize perf/pixel),
+run all game logic on the GPU reading input from CPU-filled persistent mapped ring buffer (minimize input latency),
+use heavy post processing like motion blur and extreme amounts of film grain (remove enough exactness to invoke the mind's reconstruction filter).<br>
+<br>
+4K presents a serious problem in that in-display up-sampling can add latency, 
+and often in-GPU-scan-out or in-display up-sampling is total garbage (for example too strong negative lobe adds a halo effect).
+The way I'd tackle the 4K display is actually the oppsite of convention: 
+output native but use the increased resolution to simulate a synthetic CRT shadow mask
+or maybe a very high ISO film (massive grain),
+to reduce the required internal target resolution to something under 1080p.
+On that topic, the majority of the trending "pixel art" games completely missed the point of the arcades:
+ultra-low-latency input with constant frame-rate (not possible on mobile platforms or in browsers),
+arcade joystick input (something well-grounded and precise which can take a pounding),
+and high-quality non-block pixels produced by a CRT.<br>
+<br>
+My personal preference is for the most extreme tradeoffs:
+drop view dependent lighting, go monochome, drop resolution, drop motion blur, drop depth of field, no hard lighting, no hard shadows,
+remove aliasing, add massive amounts of film grain, maximize frame-rate, and minimize latency.
+Focus on problems which can be solved without falling into the valley,
+produce something which respects the limits of the machine,
+and yet strives for timeless beauty.
+
+
+
+
+ 
+
+
+</div></body></html>
+
+
