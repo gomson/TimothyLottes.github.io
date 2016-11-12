@@ -1,0 +1,19 @@
+<html><head><link rel="stylesheet" href="style.css"></head><body><div class="page">
+<h1>20141006 - Driving NTSC TV from GTX 880M</h1>
+<br>
+
+
+Got the <a href="http://www.crescendo-systems.com/transcoder.html">Crescendo Systems: TC1600 VGA to YPrPb Transcoder</a> in this week, and combined with the <a href="http://www.hdfury.com/shop/videoprocessors/hdf1-nano-gx/">HDFury Nano</a>, I was able to generate a 720x240 progressive NTSC component signal and drive a 2003 TV from the HDMI out of my GTX 880M based laptop (using a custom Modeline in X).<br>
+<br>
+Still have some challenges to iron out. The only VGA connector I had was a little thick, so had to open up TC1600 box and add more clearance to the VGA connector cutout (no problem). First attempt would not maintain sync, ended up just trying the second jumper setting, and everything worked enough to get a signal. EDIT, tried manual tuning, not able to get resolve a problem where image brightness (input signal) effects h-sync (bright lines have different h-offset?) and what looks like red or blue horizontal streaks in dark but not black regions. Otherwise the signal works well enough to try a bunch of things, but I do not have the tools to track down and resolve the remaining problems.<br>
+<br>
+<b>Impressions vs Memory</b>
+<br>
+While I'm able to also run an interlaced signal with double the vertical resolution, this is effectively useless due to visual artifacts (as expected). However the NTSC TV looks better at 60Hz interlaced than the VGA CRT at 180Hz interlaced. The combined higher persistence and more diffuse beam makes a big difference here. The progressive 60Hz output on the higher persistence TV does visibly flicker a lot more than I remember thanks to viewing the TV a foot away with a white background. Old TVs managed to get away with this probably because content was almost never white, and the TV was far enough away to not trigger the peripheral vision as much.<br>
+<br>
+Believe the crappy TV I have is actually low-pass filtering the component chroma input to match s-video or even horrible composite. Not sure, but single red pixels look very bad. Have a bit of work here to get the vintage arcade feel (probably need a better TV).<br>
+
+
+</div></body></html>
+
+
