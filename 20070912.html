@@ -1,0 +1,38 @@
+<html><head><link rel="stylesheet" href="style.css"></head><body><div class="page">
+<h1>20070912 - The Making of a Font</h1>
+<br>
+
+Yes the font looks tiny on the web, but at its 640x480 target resolution it is 100% readable.
+<br>
+<br>
+<i>(Lost Image)</i>
+<br>
+<br>
+For the Atom Forth Editor I needed a raster font which met a very specific set of constraints.
+<br>
+<br>
+<ul>
+<li>The font must work perfect at 640x480.
+<li>It must support 64 characters in 640 pixels wide.
+<li>It must also support 9 characters in 40 pixels wide.
+<li>It must be readable when drawn over the same color background.
+</ul>
+<br>
+The editor is displaying 16 32-bit tokens per line, with each line containing 2 sub-lines. The top sub-line shows 4 characters, and the bottom shows data, which can be formated with up to 9 characters. So the font was built exactly for these guidelines. I also went with lowercase as just smaller uppercase letters, in order to remove the need for any descending pixels, and thus pack in more lines per screen.
+<br>
+<br>
+<b>Building the Font</b>
+<br>
+For the font texture I'm using the Red channel as a font shadow mask, and the Green channel as the font, hence the red background and green lettering at the top. The extra spacing is so that texture interpolation works correctly. In order to have anti-aliasing and font features on exact pixel boundaries for great readability, I started with drawing an aliased version of the font at its native size. Then nearest-up-sized to 4x its original size, and cleaned the bitmap. Then finally bilinear downsized to the native resolution to have perfect anti-aliasing and readability.
+<br>
+<br>
+<b>Why 640x480?</b>
+<br>
+Ever watch a HDTV broadcast of a home Celtics basketball game? The MPEG artifacting during any motion is horrendous, especially on the wood grain of the court. It is so bad and distracting, I'd rather watch it on regular TV or even TV resolution DirectTV. The point? Technology is pushing huge resolution, but image quality is suffering. As like HDTV, what is the point of HD games with such bad aliasing problems? Personally I prefer a perfectly anti-aliased 640x480. So for Atom I am targeting 640x480 as the midrange resolution. Sure 1024 and larger if you have a fast GPU, and also 512 and smaller if you have a really slow GPU. But regardless of the resolution, Atom is always going to have perfect anti-aliasing.
+
+
+
+
+</div></body></html>
+
+
