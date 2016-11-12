@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<rss version="2.0">
+<channel>
+ <link>https://timothylottes.github.io/index.html</link>
+ <title>Timothy Lottes</title>
+ <description>Blog and Archive</description>
+ <item>
+  <title>20161109</title>
+  <link>https://timothylottes.github.io/20161109.html</link>
+  <description>Latest Post</description>
+  <pubDate>Wed, 09 Nov 2016 00:00:00 EST</pubDate>
+ </item> 
+</channel>
+</rss>
