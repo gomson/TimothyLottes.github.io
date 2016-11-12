@@ -1,0 +1,117 @@
+<html><head><link rel="stylesheet" href="style.css"></head><body><div class="page">
+<h1>20150912 - Self-Correcting Part 2 or Rather a Rant on Why Extreme DoD</h1>
+<br>
+
+<i>Related idea to the prior post, and as a partial reply to some twitter comments...</i><br>
+<br>
+A "modern" API effectively coupled to a language: 
+everything revolves around calling "functions",
+which is a lock-in to a very specific and constrained way of thinking.<br>
+<br>
+What if the API instead is a language agnostic description of data layout, 
+with some protocols (again data layout) for communication (message passing).
+The "language" need not matter, and is completely replaceable at will.
+The components which transform the data, aka the nodes in the program's data flow,
+could be written in any language and are effectively throw-away, replaceable pieces. 
+<br>
+<br>
+The aim is to get to the point where the program is a canvas which is easily and instantly malleable,
+but still runs at to-the-metal performance, with zero downside to dangerous experimentation --- that instant feedback addiction loop.
+<br>
+<br>
+GPU provides this natively: dedicated hardware to contain accesses to within resources.
+Traditionally the data layout is the collection of images and buffers,
+the format of the data inside those resources,
+and the rules at which the data can be adjusted.
+For GPU programming using the "bind-all" style of programming
+(where there is only one giant descriptor set with everything in it,
+so that all shaders have access to all descriptors):
+shaders accessing wrong resources is less of a problem,
+the larger problem is out of bounds access in a given resource.
+<br>
+<br>
+On the GPU you can build a pipeline of operations which keeps running even in the presence of bad data.
+Sure the output may be totally wrong, but it runs.
+For live compressed video broadcast in the presence of packet loss, 
+you have sweeping I (non-predictive encoded) macro-block(s) which
+acts as a cleaner which causes the frame to re-converge to correct form
+when data goes bad.
+This same concept can be applied to GPU data.
+Resource caches could have a cleaner which periodically
+at a slow rate reloads parts of the data from storage.
+Or with hardware support for async compute,
+run a very low utilization and low priority background job which rebuilds procedural structures,
+or validates correctness of various data structures.
+The robustness of such a system might enable things like partial state saves
+and then restores from out of sync systems, 
+to work enough to be useful.
+This also has a relation to maintaining bounded frame rate,
+designing in ability for the engine to limit itself and scale regardless of input,
+and perhaps adapt to rapidly varying limits.
+This isn't really a programming convention for language,
+it is more about making robust solutions which allow for rapid development.
+<br>
+<br>
+One of the key components missing from PC GPU APIs is a stable way to mutate 
+the GPU command stream from the GPU, 
+or perhaps this just starts with efficient predication in a given stream:
+just place everything possible in the baked stream which gets replayed all the time,
+then use logic embedded in the stream to avoid things which need not run (but with a decision based on active GPU state),
+and dispatch indirect for variable workloads.
+This works as long as the kernels/shaders in the graph are constant.
+When code is specialized instead of data, then the process breaks down.
+However, specializing code is ultimately what leads to giant bloatware and development grid-lock.
+Simplification favors data specialization over code specialization.
+Second issue, when bindings are specialized instead of data,
+then the process breaks down.
+This is why I'm a "bind-all" type of person.
+If I'm stuck with limited bindings I'd rather take the hit using texture arrays.
+<br>
+<br>
+This is also heavily related to memory organization.
+I don't dynamically allocate in the traditional sense.
+I always statically partition into fixed resources with bound limits at start time,
+with aliasing to maximize utilization.
+Machines have GB's of memory, why variable size dynamically allocate anything.
+Use a dead simple fixed size resource pool allocator,
+which is trivial to implement on highly parallel machines like GPUs.
+<br>
+<br>
+Getting back to CPUs, having function call interfaces for everything is a disease.
+What I much rather have is a collection of ports or interfaces in a fixed layout in memory.
+Starting with something simple like time.
+If the hardware has an accessible wall-clock time interface, say via some ISA opcode,
+then I don't need a function to get the time.
+I just need a convention for this fixed layout in memory of where to find the base time value
+which I add to the ISA opcode results to get the real time.
+Now for keyboard access.
+Just give me a key bitarray at a fixed location in the memory layout.
+Have a background thread atomically OR bits on key presses,
+while I atomically AND out bits after I process key presses.
+How about file access.
+Just have a convention for maximum number of file handles,
+maximum path size, a bit array to flag entries which are new requested transactions, 
+a bit array for the OS to reply that a transaction is finished, 
+a convention that lowered array elements (requests) are completed first, etc,
+setup fixed arrays for this stuff in memory.
+Everything ends up being, write data to memory, then ring some kind of doorbell,
+to signal to the OS to get busy.
+There is no functional interface,
+just a text document which describes the memory layout and how to use it.
+<br>
+<br>
+Bringing this back to GPUs, when the GPU can just write into CPU-side memory,
+and there is some convention for triggering an interrupt,
+or some OS convention to poll at a rate in which interrupts are not necessary
+(aka you don't run hot then sleep, but rather stay live at lowest power state,
+with cores powered down), then the GPU and CPU simply access the same
+memory as the CPU to communicate with the OS.
+And perhaps you split the read and write sections of this memory,
+and not depend on atomics as in my prior examples, etc.
+New OS functionality doesn't need a new API when the GPU wants to access,
+the API = dead simple loads and stores.
+
+
+</div></body></html>
+
+

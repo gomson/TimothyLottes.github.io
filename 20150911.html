@@ -1,0 +1,26 @@
+<html><head><link rel="stylesheet" href="style.css"></head><body><div class="page">
+<h1>20150911 - Self-Correcting CPU Pipelines</h1>
+<br>
+
+<i>Elaborating an idea which came up in a prior conversation...</i><br>
+<br>
+The aim is to make CPU programming as fun and easy as iterative run-time edit reload based GPU shader programming.
+
+Re-purpose the CPU page tables for intra-app memory protection between in-app tasks.
+Effectively providing hardware protection for functional programming.
+
+When in-app tasks switch, adjust page table protection, then use INVLPG (on 486 and up) to flush TLB entries for changed pages.
+The page tables change to disallow writes to now read-only data from the prior completed job,
+and to allow writes to write-able data for the current job.
+Use x86's support for various page sizes and pre-staged page tables for fixed jobs to make this efficient.
+
+Setup a background watchdog to act as a TDR check, to reset to a stable state if any task runs too long (infinite loop, etc).
+
+The "kernels" or CPU jobs which transform data can also be designed to be somewhat self correcting,
+using min or max to limit indexes, etc...
+
+
+
+</div></body></html>
+
+
