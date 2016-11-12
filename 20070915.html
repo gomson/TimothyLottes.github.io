@@ -1,0 +1,30 @@
+<html><head><link rel="stylesheet" href="style.css"></head><body><div class="page">
+<h1>20070915 - Building the Chicken Without an Egg</h1>
+<br>
+
+
+The classic Chicken and Egg problem, I really did want to write the editor for Atom Forth in the Atom Forth language, but atlas, it is hard to edit a binary source format without the editor. My solution was to get the editor up quickly using C, and add some "syscall" hooks in Atom Forth for controlling the editor. Later when I have the time, I will port the editor over to Atom Forth.
+<br>
+<br>
+<b>Random Progress</b>
+<br>
+Just finished up the display code, screen shot below shows formatting of completely random data. Got the initial coloring somewhat where I want it. Already moved on to the editing code. Soon this will actually be usable. With the help of <tt>objdump -d</tt> and <tt>gas</tt> wrote the initial interpreter, using the dis-assembly to grab the byte stream for various interpreted opcodes like,
+<br>
+<br>
+<pre>
+0000000000400745 SAdd:
+400745: 48 03 47 00 :: add 0x0(%rdi),%rax
+400749: 48 83 c7 f0 :: add $0xfffffffffffffff0,%rdi
+40074d: c3 :: retq</pre>
+<br>
+Also this is my first time really getting into the binary opcode details of the 64bit extension to the x86 instruction set for my assembler and the differences between the C ABI between Linux and Windows for my C "syscall" interface. I've noticed Microsoft made a subtle but important optimization error in their C calling convention concerning how SSE values are saved and restored during function calls. The problem is that they have SSE regs xmm6-xmm15 as callee saved. Of course the callee doesn't know the type of data in the SSE regs, it could be scaler float, scaler double, vector float, vector double, and vector integer, all of which have separate load and store opcodes. On the Core Duo 2 and newer Intel processors, there is a performance penalty for using instructions which don't match the type of data currently in the SSE regs. This is caused by the processor having to do an extra internal conversion (probably because the register file is not stored in exact binary format, i.e. different radix between int and float for low latency ALU operations).
+<br>
+<br>
+Well I am on day 5 of designing and writing a new language plus its interpreter, compiler, assembler, and runtime source editing tool. Not bad for just 5 days. More later when this thing actually works...
+<br>
+<br>
+<i>(Lost Image)</i>
+
+</div></body></html>
+
+
