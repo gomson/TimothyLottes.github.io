@@ -1,0 +1,19 @@
+<html><head><link rel="stylesheet" href="style.css"></head><body><div class="page">
+<h1>20141010 - The Source of the Strange "Win7" Color Distortion?</h1>
+<br>
+
+<i>EDIT: Root caused. Two problems: (1.) The Dell monitors at work have some problems in "Game" mode. They work fine in "Standard" mode. I'm guessing "Standard" uses some latency adding logic to correct for some color distortion of the panel, and this logic gets turned off in "Game" mode? (2.) Displays tested at work are slow IPS panels with larger gamut than the fast displays at home. The hue-to-warm-to-white transition in my algorithm is too punchy in the yellows for large gamut displays. Algorithm needs some more tuning there.</i><br>
+<br>
+I have a <a href="https://www.shadertoy.com/view/4sjXDD">shadertoy program</a> which presents photo editing controls and a different way to handle over-exposure. Fully saturated hues blend towards white instead of clamping at a hue, and all colors in over-exposure take a path towards white which follows a warm hue shift. So red won't go to pink then white (which looks rather unnatural), but rather red to orange to yellow to white. This test program also adds 50% saturation to really stress the hard exposure cases.<br>
+<br>
+The result looks awesome on my wife's MacPowerBook, and on my home Linux laptop using either a CRT or laptop LCD. However at work on a Win7 box with two Dell monitors and on a co-worker's personal Win7 laptop, the result looks like garbage. Specifically some hues on their route towards white have non-contiguous gradient which looks like some color management mapping operation failed.<br>
+<br>
+I tried lots of different things to adjust color management in Win7 to fix it, but was unable. Was certain this had to be a problem in Win7 because two different Win7 machines with completely different displays all had the same problem. Then another co-worker running Win8 with a set of two different Dell monitors (also color calibrated) got a different result: one display had the same problem, the other looked good.<br>
+<br>
+So not a Windows problem, but rather some new problem I had never seen before on any display I personally have owned: LCD displays with really bad distortion on saturated hues. And apparently it is common enough such that 4 of 5 different displays in the office had the problem. 4 of these displays were color calibrated via the GPU's LUT per color channel, but calibrated to maintain maximum brightness. Resetting that LUT made no difference. However changing some of the color temp settings on the display itself did reduce the distortion on one monitor (only tested one monitor).<br>
+<br>
+Maybe the source of the problem is that the display manufactures decided that the "brightness" and "contrast" numbers were more important, so they overdrive the display by default to the point where they have bad distortion? Changing the color temp would reduce the maximum output of one or two channels. Not at work right now, so not able to continue to test the theory, but guessing the solution is to re-calibrate the display at a lower brightness.<br>
+
+</div></body></html>
+
+
