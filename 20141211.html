@@ -1,0 +1,20 @@
+<html><head><link rel="stylesheet" href="style.css"></head><body><div class="page">
+<h1>20141211 - AMD64 Assembly Porting Between Linux and Windows</h1>
+<br>
+
+One of the unfortunate differences between Linux and Windows for AMD64 assembly is that both have completely different ABI call conventions when accessing common system libraries like OpenGL. However it is possible to bridge the gap. Arguments 0 through 3 are in registers on both platforms, but in different registers (easy macro workaround),<br>
+<br>
+<tt>Linux__: rdi rsi rdx rcx r8 r9<br>
+Windows: rcx rdx r8  r9</tt><br>
+<br>
+The solution for portability is to target Windows as if it had 6 argument registers since both rdi and rsi are callee save,<br>
+<br>
+<tt>Windows: rcx rdx r8  r9 {rdi rsi}</tt><br>
+<br>
+But prior to a more than 4 integer argument C library call, push rsi and rdi on the stack, then add 32-bytes to the stack pointer for the Windows "register parameter area".<br>
+<br>
+Finally don't use the "red zone" from the Linux ABI and also don't use the "register parameter area" from the Windows API.<br>
+
+</div></body></html>
+
+
