@@ -1,0 +1,134 @@
+<html><head><link rel="stylesheet" href="style.css"></head><body><div class="page">
+<h1>20150913 - Minimal Operand CPU ISA For IPC</h1>
+<br>
+<i>Dumping some thoughts on CPU design, one way to design for higher IPC (ILP) with something similar to a dual-stack forth machine...</i><br>
+<br>
+
+This started from the thought that it might be possible 
+to apply almost zero-operand ISA design to a CPU designed for IPC.
+Packing either 3 or 4 operations into a single 32-bit instruction word.
+This form of instruction compression has all sorts of advantages,
+both in reduction of bandwidth 
+and as a side effect reducing the wires and ports required to implement.
+Started thinking about a fictional implementation of a 32-bit integer only computer,
+something which, in theory thanks to a minimal ISA, 
+could be JIT compiled on a conventional CPU via just a lookup table (would be very fast emulation).
+However in this post I'm deviating from the idea of emulation
+and throwing in ideas which would be better for dedicated hardware (like using per slot data stacks instead of just registers).
+<br>
+<br>
+<pre>
+Each instruction is a fixed 32-bits in size.
+Each instruction holds 4 slots {0,1,2,3}.
+Each slot has an 8-bit opcode.
+
+  11111111111111110000000000000000
+  FEDCBA9876543210FEDCBA9876543210
+  MSB                          LSB
+  ........................ssssssss 8-bit opcode for slot 0
+  ................tttttttt........ 8-bit opcode for slot 1
+  ........uuuuuuuu................ 8-bit opcode for slot 2
+  vvvvvvvv........................ 8-bit opcode for slot 3
+
+Slots share the following 32-bit registers,
+  return stack pointer : R
+  instruction  pointer : I
+ 
+Each slot has its own 32-bit registers: slot {0,1,2,3},
+  top     registers : {S,T,U,V}
+  2nd     registers : {K,L,M,N}
+  address registers : {W,X,Y,Z}
+</pre>
+<br>
+The "top" is the top of a very short per-slot data stack
+(which loops around on overflow, and has no memory backing).
+The "2nd" registers are just the 2nd item on the data stack.
+This split data and return stack shares a lot of similarities in structure to Color Forth style hardware.
+The reads of top and address registers of other slots, would see the value from the prior clock.
+So think of all the slots executing in parallel.
+<br>
+<br>
+Dedicated address registers provide some interesting properties.
+Becomes possible to limit the opcode space and operations 
+applied to them.
+It also becomes possible to auto prefetch cache lines into L0 (something much closer than L1)
+when the address registers are set.
+So using half the opcode space for 32-bit load and stores with 
+a literal range large enough for access to a complete cache line.
+The # below represents how many opcode slots are taken up.
+NOTE, addressing is by 32-bit word, not by byte!
+The load pushes the fetched value on the slot's data stack (so 2nd ends up being the old top).
+The store pops the value off the slot's data stack (so top ends up being the prior 2nd, etc).
+Grabbing 32-bit literals can be done with one opcode "#", taking the next instruction as data, and advancing the CP.
+There is a secondary load path which uses a top register as an address.
+The . is a place-holder for some opcode binary data I didn't feel like flushing out.
+<br>
+<br>
+<pre>
+ENCODING  ASM   #   MEANING
+--------  ----  --  -------
+00ssiiii  si@   64  top(%)=[adr(s)+i]
+01ssiiii  si!   64  [adr(s)+i]=top(%)
+1.....ss  s@    4   [top(s)+i]=top(%)
+1.......  #     1   top(%)=next instruction
+
+  % = current slot
+  s = 2-bit slot index
+  i = 4-bit unsigned immediate
+</pre>
+<br>
+Integer operations can take advantage of slot implied destination and first source,
+using another slot's "top" as 2nd source or using the current slot's "2nd".
+Using "2nd" consumes the value from the slot's local data stack.
+Using "top" from another slot does not consume the value.
+These support cross slot source reads without taking much opcode space.
+I left out shifts and other operations, just providing a few examples below,
+<br><br>
+<pre>
+ENCODING  ASM   #   MEANING
+--------  ----  --  -------
+1.....ss  s     4   top(%)=src(s)?
+1.....ss  s+    4   top(%)=top(%)+src(s)
+1.....ss  s*    4   top(%)=top(%)*src(s)
+1.....ss  s&    4   top(%)=top(%)&src(s)
+1.....ss  s|    4   top(%)=top(%)|src(s)
+1.....ss  s^    4   top(%)=top(%)^src(s)
+1.......  -     1   top(%)=-top(%)
+1.......  ~     1   top(%)=~top(%)
+
+  % = current slot
+  s = 2-bit slot index
+  src(s) := if(s==%) 2nd(%) else top(s)
+</pre>
+<br>
+Address register operations are separate from standard ALU ops.
+Supporting ability to write to another slot's address register
+unlocks working on address registers in any slot. 
+Setting an address register pops the top off the slot's local data stack.
+Fetching an address register pushes the value on the slot's local data stack.
+<br>
+<br>
+<pre>
+ENCODING  ASM   #   MEANING
+--------  ----  --  -------
+1.....ss  sP    4   top(%)=adr(s)
+1.....ss  sP=   4   adr(s)=top(%)
+1.....ss  sP+=  4   adr(s)=adr(s)+top(%)
+
+  % = current slot
+  s = 2-bit slot index
+  src(s) := if(s==%) 2nd(%) else top(s)
+</pre>
+<br>
+Branching can act as a terminator of the 4 opcode packed 32-bit instruction word.
+So slots after a branch become a nop,
+and the space is reused for a literal for the branch itself.
+So 24-bit, 16-bit, or 8-bit, or 0-bit displacement.
+
+
+
+
+
+</div></body></html>
+
+
