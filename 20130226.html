@@ -1,0 +1,9 @@
+<html><head><link rel="stylesheet" href="style.css"></head><body><div class="page">
+<h1>20130226 - Shader Aliasing and Small Triangles</h1>
+<br>
+
+As triangle pixel coverage goes from fully covered towards sub-pixel sized triangles, I think it is important to remember that exact evaluation of the color at the point where the triangle intersects a raster position starts to provide the "wrong" answer and results in shader aliasing. At the point of sub-pixel triangles, any number of triangles may contribute to the "correct" color of a pixel, however without MSAA only one triangle will get shaded, and with NxMSAA only at most N triangles will get shaded. For detailed surfaces moving across a pixel, the triangle normal in the non-MSAA case may change temporally in direction 180 degrees even across one frame. Any attempt to base shading off this triangle normal is likely going to fail in horrid shader aliasing. Texture maps (such as detailed normals) which are encoded with respect to triangle tangent space will fail when multiple triangles start sharing texels in the texture under minification. What is needed in the minification case is a texture lookup which provides the distribution of surface normals in object space. This distribution ideally would also be a function of view direction (self shadowing). Standard GPU forward or deferred shading has the added constraint that this distribution of surface normal encoding must be filterable. This IMO adds a lot of complexity (see LEAN and CLEAN mapping for example). This is an area in which texture space shading should provide a clear cut complexity reduction. When texels are point sampled for shading, surface distribution can be kept in some non-filterable encoding... 
+
+</div></body></html>
+
+
