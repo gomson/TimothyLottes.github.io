@@ -1,0 +1,14 @@
+<html><head><link rel="stylesheet" href="style.css"></head><body><div class="page">
+<h1>20090812 - Stochastic Visibility in Distorted Fisheye</h1>
+<br>
+
+<center><i>(Sorry All Images are Lost)</i></center>
+<br>
+
+Talked about this before, "Screenshot would have been included if computer was alive". 
+Finally got around to doing a few screen grabs. <br /><br />Quick refresher, the engine is a modified version of the one in this video. The screens below do NOT show a rendered view, instead they show a direct rendering of the {x,y,z} coordinates (modified by a transform to color them) of the nodes themselves. Yes the scene tree is physically stored in the distorted fisheye projection, parent nodes in the hierarchy show up as the salt and pepper noise in the screen grabs. <br /><br />The persistent scene is 1024x1024 or 1M nodes (minus the edges of the fisheye projection) of which their 8M children are processed each frame. I bumped up the number of roots in the scene tree to 64K (from the 4K I mentioned in the previous blog post).<br /><br />It was awesome to see the stochastic visibility algorithm work on all sorts of horrid cases like insane amounts of object to object overlap (overlap being both from rooted objects overlapping, as well as the root's tree nodes self overlapping).<br /><br /><i>I've been distracted with the CUDA version, so I haven't had time to try the collision improvement. I am keeping this alive however, just in case I get surprised by the triangle rate on DX11 hardware...
+
+
+</div></body></html>
+
+
