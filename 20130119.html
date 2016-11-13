@@ -1,0 +1,108 @@
+<html><head><link rel="stylesheet" href="style.css"></head><body><div class="page">
+<h1>20130119 - Understanding the Speed of Light of Game Input Latency</h1>
+<br>
+
+<br>
+<b>----BACKGROUND----</b><br>
+<br>
+<b>PC CRTs</b>
+<br>
+After the graphics card finishes rendering the frame, the graphics card scans out the frame, and during scan out the display is physically displaying the frame. This was the ultimate in high quality and low latency. In contrast, modern flat panels need to buffer some amount of the frame (and sometimes the entire frame) before display, and have pixel switching latency.
+<br>
+<br>
+
+<b>PC Flat-Panel Display Latency</b>
+<br>
+<a href="http://www.tftcentral.co.uk">TFT Central</a> measures input latency for PC displays. Low quality displays can have upwards of 30ms of latency, average displays around 16ms, and better displays around 5ms. Even 120Hz displays can have 12ms of latency. Note all these numbers represent the time to add on top of scan-out.
+<br>
+<br>
+
+<b>HDTV Display Latency</b>
+<br>
+For game mode, <a href="http://www.hdtvtest.co.uk/">HDTVtest</a> measures input latency for HDTV displays. I personally use a Samsung PS50C series plasma for a PC monitor which has a
+<a href="http://www.hdtvtest.co.uk/news/samsung-ps50c6900-plasma-3d-tv-20101130940.htm">18ms display latency</a>. Looking through the site, the popular or newer reviewed plasma HDTVs typically have latencies ranging between 16ms for the more popular less expensive models, to 30ms on the more expensive models. Non-plasma popular or newer reviewed HDTVs showing similar 16ms to 30ms input latency also. Looks like the HDTV industry has made some advances in reducing latency, now matching typical PC displays with the exception of the best PC displays.
+<br>
+<br>
+
+<b>Mouse Input Latency</b>
+<br>
+Most default crappy PC mice have a 125Hz update rate (or an 8ms latency). My crappy mouse updates at 8ms. Gaming mice go all the way down to 1ms.
+<br>
+<br>
+
+<b>Dissecting PC DX WDDM Graphics Stack Latency</b>
+<br>
+For DirectX, <a href="http://graphics.stanford.edu/~mdfisher/GPUView.html">GPUView</a> is the tool to use. Here are the <a href="http://msdn.microsoft.com/en-us/library/windows/hardware/ff570589%28v=vs.85%29.aspx">stages</a> of the Windows WDDM driver stack (note this graph is not exactly correct),
+<br>
+<br>
+<img src="http://i.msdn.microsoft.com/dynimg/IC504961.png"><br> 
+<br>
+For DX, the vendor's graphics driver is cut into two parts, user-mode and kernel-mode, and in-between is a Microsoft layer which controls memory managment and GPU scheduling. When the application issues a DX API call, this hits the graphics vendor's user-mode driver (which note might queue the API call to a user-mode driver background thread, and then immediately return so the game thread can continue to issue draw calls as fast as possible). When the user-mode driver (finally) processes the API call, it queues grouped commands to the Microsoft layer which schedules the groups, then eventually passes the groups of commands to the graphics vendor's kernel-mode driver which then enques the groups of commands to the GPU.<br>
+<br>
+Latency of the PC DX driver stack depends on when all these threads physically get scheduled on the machine. Quality of service of frame rate also depends on when these threads get scheduled on the machine. Since the Windows CPU scheduler cannot insure real-time scheduling, the DX driver stack utilizes a latency buffer of up to 3 frames before the GPU starts to render if the application is GPU bound.<br>
+<br>
+Two to three frames of latency is typical of the PC driver stack. For this reason, many serious gamers disable v-sync, accept tearing, and attempt to maximize frame rate --- all in the name of reducing input latency.<br>
+<br>
+Some games introduce GPU queries to force the PC driver stack to remove these extra frames of latency. This can result in the GPU idling waiting on the long CPU pipeline to feed in commands. When doing this it is likely a good idea to insure some idle CPU hardware threads which can be used by the driver threads.<br>
+<br>
+
+<b>OpenGL and Latency</b>
+<br>
+For OpenGL in Linux at least (and maybe even in Windows for some vendors drivers), route from CPU to GPU is much more direct (no WDDM layer in Linux). Also in OpenGL one can use glFlush() to force the CPU to kick off commands to the GPU instead of waiting for the push buffer segment to fill up. For those developers looking to minimize latency and as a result finding GPU pipeline bubbles, try glFlush() to force an early kick to remove the pipeline bubble.<br>
+<br>
+
+
+<b>----SPEED OF LIGHT----</b><br>
+<br>
+<b>First The 60Hz Console Title</b>
+<br>
+Starting with <a href="http://www.eurogamer.net/articles/digitalfoundry-vs-console-lag-round-two-article?page=3">measured numbers from Digital Foundry</a>. Subtracting out the 50ms display latency of their low quality Dell panel (16.6ms of scanout + 33ms of display latency), they have found a typical good 60Hz title has a 16ms game pipeline latency. They are using a 60Hz camera, so lets assume +/-16ms of possible error.<br>
+<br>
+Diving into the optimized game pipeline,<br>
+<br>
+(1.) Kick view-independent draw calls.<br>
+(2.) Read input.<br>
+(3.) Kick view-dependent draw calls.<br>
+(4.) CPU starts on next frame which can include (1.).<br>
+(5.) GPU finishes frame.<br>
+(6.) V-sync window.<br>
+(7.) Scan-out + extra flat panel display input latency.<br>
+<br>
+Note the game issues view-independent draw calls before reading input. Reading input is delayed to as late as physically possible (2.). Controller input to display input jitter will effect latency. Lets say controller input is 10ms (due to OS or hardware buffering). In the impossible best case, the controller and the display are completely in sync and the game always gets the controller input right when it needs it. In the worst case the game just misses the controller input resulting in 10ms extra latency in this made up example.<br>
+<br>
+The second addition of latency is the time it takes for the engine to begin rendering view-dependent commands (3.) based on input. Typical 60Hz games are likely to have relatively little view-independent draws (with the exception of streaming reasources, or a game which does something awesome like texture space shading). In theory maybe a console game could get a signal from the 2nd to last view-independent draw call, triggering a CPU interrupt which forces a last chance read of possible controller input, and then patching view based constants. But in practice I have never heard of any developer trying this. Getting back on track, there is some amount of latency between the CPU generating then kicking draw calls, and the GPU rendering those draw calls.<br>
+<br>
+A third addition of latency is the GPU rendering far enough ahead of v-sync to insure the frame can have some run-time varibility without missing.<br>
+<br>
+Add all these extra sources of latency, and one is likely looking at up to an extra entire frame of latency (which is within the possible measurement error of the Digital Foundry article). Total latency for a good 60Hz console title is probably somewhere around 16.7ms to 33.3ms, adding 16.7ms for scanout, then pairing with a good HDTV (like a 16.7ms latency plasma), and total button to display latency is likely somewhere around 50ms to 66.7ms (or 3-4 frames). The Digital Foundry article measures around 66ms button to screen on a display which has similar latency to a good plasma HDTV.<br>
+<br>
+
+<b>Extending to 30Hz Console Title</b>
+<br>
+A 30Hz title can have more view-independent draw calls, this can be leveraged to reduce latency. The cost of display to input jitter, the latency of view-dependent issue to kick, etc, can have relatively less of an effect at 30Hz. The Digital Foundry article measures 50ms-66ms of game latency for a good 30Hz title (given possible error and subtracting out scan-out and display latency). Now if a 30Hz game scans out at 60Hz (double scan frames), add 16.7ms for scan-out then 16.7ms for a good HDTV display's added latency, and totals for a 30Hz title could be as low as 83ms-100ms for button to display.
+<br>
+<br>
+
+<b>Quick Estimates of PC Latency</b>
+<br>
+Lets start with speed of light for a 120Hz display with 6ms latency over scan-out, but lets skip over some important details: 8.3ms rendered frame + 8.3ms scanout + 6ms display = 22.6ms. Now if DX driver stack buffers an extra 1 frame = 31ms. Or 2 frames = 39ms. Or 3 frames = 47ms. Which is starting to get near the latency of a 60Hz console title with a good HDTV. That's at 120Hz, if your PC title is 30Hz then the 2-3 frames of PC DX driver stack latency is a huge deal.<br>
+<br>
+How about my setup with a mid-range GTX 560ti. I've removed the driver buffering problem by my CPU input thread writing directly into a pinned memory buffer, with the GPU reading input from pinned memory directly then computing the view matrix and storing to the constant buffer right before the GPU renders the view-dependent part of the frame. My crappy mouse is 8ms of latency, and I have say 12ms/frame of view-dependent GPU work. Expected total latency: 8ms mouse + 12ms drawing + 4ms v-sync window + 16.7ms scanout + 18ms plasma display = 59ms expected mouse to display. Hopefully right in-line with a good 60Hz console experience.<br>
+<br>
+Continuing with a high-end GPU with a gamer mouse and good PC display: 1ms mouse + 6ms drawing + 2ms v-sync window + 8.3ms scanout + 5ms display = 20.3ms. The PC remains king in terms of latency.<br>
+<br>
+
+<b>----EXTRA----</b><br>
+<br>
+<b>Understanding Tiler GPUs and Latency with Low Frame Rates</b>
+<br>
+In contrast to desktop and fast notebook GPUs, most phone and tablet GPUs with the exception of NVIDIA's Tegra GPUs, are tilers. Likewise Intel CPUs with slow PowerVR integrated mobile GPUs are also tilers. Tilers buffer up a complete frame, then optionally reorder draw calls to avoid scene (or framebuffer target) changes, and then issue commands to the GPU. The Tiler GPU needs to run two frames in parallel: the vertex load from the current frame, and the pixel load from the prior frame. So on top of whatever CPU latency window is required because of the non-real-time scheduling in the OS, the GPU itself needs to at least double buffer. Mixing low frame rates and a tiler GPU is a latency nightmare. Add this latency to the latency of the tablet touch interface and now you understand why touch based twitch games won't work on iOS mobile...
+
+
+
+
+
+
+</div></body></html>
+
+
