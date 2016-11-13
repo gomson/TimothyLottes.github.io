@@ -1,0 +1,9 @@
+<html><head><link rel="stylesheet" href="style.css"></head><body><div class="page">
+<h1>20090909 - L1 Misses</h1>
+<br>
+
+<a href="http://x264dev.multimedia.cx/?p=149">Dark Shikari has a really great blog post talking about L1 misses</a>. Quoting from that post,<br /><br /><i>"And yet in many cases–such as in x264–much more time is wasted on L1 misses than L2 misses.<br /><br />The AMD processor documentation says that the L2->L1 prefetcher is not strided, and tests on Intel chips suggest the same.  This means that if we are performing, for example, an access of a block of image data that is in L2 but not L1 cache, every single line of data will cause an L1 cache miss. The benchmarks seem to agree; the first chroma motion compensation during qpel in x264 takes more than twice as long as the others!"</i><br /><br />This is really a fantastic example of some of the less talked about limitations of using CPU caches and processors optimized for low latency serial computation. Will be interesting to see if this becomes more or less of a problem as CPU style architectures have ever larger vector units and end up using L1 more as a virtual register file.
+
+</div></body></html>
+
+
