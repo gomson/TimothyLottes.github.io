@@ -1,0 +1,48 @@
+<html><head><link rel="stylesheet" href="style.css"></head><body><div class="page">
+<h1>20151021 - Thoughts on Minimal Filesystem Design</h1>
+<br>
+
+<i>One of the problems that modern systems have which I suspect a minimal single user system would not have is ultra high file counts in a file system.
+I make this statement under the grounds that minimal design is carried out through the system from OS through applications.
+There is a practical limit to either the amount of "things" consumed by an individual or produced by an individual.
+Also when quantity becomes ultra high, often it is better to have application manual packing instead of splitting "things" into separate files.</i>
+<br>
+<br>
+<b>Goals</b>
+<br>
+Minimal design as always.
+Files are always linear (no fragmentation). 
+Files written in groups as a linear stream can be re-read as a linear stream (no seeks between files).
+Only one seek (one write) to finalize (in storage) adding of a file entry (or group of entries) to the file system.
+Writing or reading to a file that has an existing entry, only costs the read/write (no extra metadata modifications).
+<br>
+<br>
+<b>Simplifying</b>
+<br>
+Storage device split into two regions: path stack (starts at the beginning of the device), and file stack (starts at the end of the device, grows towards the path stack).
+When a device is mounted (aka opened),
+the path stack is loaded into RAM and remains in RAM.
+This contains the entire filesystem structure.
+The path stack contains {path of file, offset of file on device, size of file on device, deleted flag}.
+Files are created by adding an entry to the top of the path stack,
+allocates room for the file on the top of the file stack.
+Files are deleted by just marking the delete flag.
+Files are moved or renamed by changing the path in the file entry.
+Files can be resized smaller by adjusting the size entry.
+When the path stack or the drive fills up,
+either clone the device (empty device fills fully compacted),
+or run a local compaction.
+Minimal OS runs 100% in RAM anyway so drive crunching away compacting after long time of usage is not a problem IMO.
+<br>
+<br>
+Challenge to conventional design: why bother with organizing file structure in storage to match directory structure?
+RAM and compute (to keep organized forms in RAM) is super cheep.
+Complexity is super expensive.
+So just load the complete file structure (path stack) into memory on mount.
+Then create acceleration structures to serve basic access patterns.
+Hash table (key = path, value = index to path stack entry) when the application knows name of file to open, etc.
+
+
+</div></body></html>
+
+
