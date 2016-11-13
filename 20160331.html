@@ -1,0 +1,18 @@
+<html><head><link rel="stylesheet" href="style.css"></head><body><div class="page">
+<h1>20160331 - Instant Soft-Reboot to Prior Machine Snapshot</h1>
+<br>
+
+An idea for practical simple memory protection on an otherwised unprotected system.
+Works similar in concept to emulator instant save and restore but applied to a full system.
+Reserve 50% of memory for a full machine state snapshot.
+Deny access to this snapshot memory except during save and restore (ie pages just not in page table).
+Hook up hotkey combination to save or restore full machine state.
+On crash, simply restore from snapshot (instant soft-reboot).
+Design around one full machine barrier per frame for safe snapshot point.
+
+
+
+
+</div></body></html>
+
+
