@@ -1,0 +1,14 @@
+<html><head><link rel="stylesheet" href="style.css"></head><body><div class="page">
+<h1>20121229 - Practical Non-Atomic CPU/GPU Communication</h1>
+<br>
+
+
+Abusing GL_STREAM_DRAW as pinned memory on NVIDIA (or <a href="http://www.opengl.org/registry/specs/AMD/pinned_memory.txt">GL_AMD_pinned_memory</a> on AMD) can be a great tool for reducing latency. I'm currently using this kind of system to send object updates to the GPU. A CPU thread can read network packets and just forward information directly to the GPU (which is managing the scene in my case). The reverse can be used to send back information to the CPU.<br>
+<br>
+(1.) CPU thread writes packets of information into a pinned memory buffer. The area of the buffer used to send packets to the GPU is effectively write only on the CPU, and read only on the GPU. (2.) Each packet includes a 32-bit word which is the hash of the packet. I'm using an integer sum of the 32-bit words as the hash. (3.) In a 256 byte packet, each 16 bytes is spaced out by a multiple of the maximum GPU SIMD width (which is 64 on AMD). 16 bytes for 64 packets are interleaved, then blocks of these interleaved 64 packets are layed out linearly in memory. This insures fast fully coalesced vec4 reads on the GPU. (4.) The GPU later reads the packets and can discard packets in which the hash fails. This effectively solves the problem of the GPU reading a partial update. (5.) CPU keeps each packet in at least 2 frames to insure the GPU gets the packet.
+
+
+
+</div></body></html>
+
+
