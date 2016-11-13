@@ -1,0 +1,62 @@
+<html><head><link rel="stylesheet" href="style.css"></head><body><div class="page">
+<h1>20140606 - Easy Understanding of Natural Draw Rate Limiters and The Route To Zero Overhead</h1>
+<br>
+
+
+I'm guessing most game developers don't often read GTC content, but Christoph Kubisch's and Markus Tavenrath's Presentation is worth a read even for those not interested in OpenGL: <a href="http://on-demand.gputechconf.com/gtc/2014/presentations/S4379-opengl-44-scene-rendering-techniques.pdf">OpenGL 4.4 Scene Rendering Techniques</a>.<br>
+<br>
+Their presentation talks about a common CAD problem: average vertexes/part under or around the register SIMD width.<br>
+<br>
+<i>Some thoughts in relation to this presentation,</i><br>
+<br>
+Register SIMD width provides an upper bound on the possible draw rate because draw state and even bindless texture resources (on some platforms/APIs) need to be the same at SIMD granularity. Going through a made up example: a GPU with 1 Gtri/sec, 64 SIMD width, and using 1 vertex/tri and 64 Hz to make everything easier to think about. Each frame has a peak of 256K waves of 64 vertexes. There is the upper bound on draws/frame assuming perfect 64 vertexes/draw: 256K draws/frame. In practice other issues would be limiters before getting close to that.<br>
+<br>
+Draws typically don't align to multiples of 64 vertex shader invocations. One can easily plot the wave packing efficiency as a function of worst case vertex/draw counts,<br>
+<br>
+__65 vertexes -> 51%<br>
+_129 vertexes -> 67%<br>
+_257 vertexes -> 80%<br>
+_513 vertexes -> 89%<br>
+1025 vertexes -> 94%<br>
+<br>
+So maybe the engine targets an average of around 1024 vertexes/draw to maintain good average SIMD packing efficiency during vertex shading. Now the draws/frame drops to just 16K. And I think even some DX11 title did 15K/frame.<br>
+<br>
+Reaching out to 64K+ draws/frame and peaking out the GPU front-end's ability to decrease vertex packing efficiency might not be the best solution to the performance problem.<br>
+<br>
+At the point where SIMD efficiency drops, any added overhead of a pull based design which enables tight SIMD packing can be a net win. Multi-draw-indirect may or may not fit that roll well depending on if the hardware can pack more than one of the individual multi-draws into a SIMD vector for vertex shading. Manual packing of multiple objects into tight packed index streams and drawing all at once might be a better option. In that case, one of the vertex attributes would be the "ObjectID".<br>
+<br>
+Given that graphics state needs to be constant: same shader, same resources, etc, one part of AZDO which is effectively required for a portable engine is using texture arrays because SIMD divergent layer access is possible. Any tiled material variation between the highest frequency draws needs to come from layer choice as some function of "ObjectID".<br>
+<br>
+Just taking GL's current API with bindless and using one giant buffer which is manually carved up and explicitly memory managed for vertex attributes, indexes, and constants, the typical API calls  for the 16K draws/frame ends up being,<br>
+<br>
+glUseProgramStages(, GL_VERTEX_SHADER_BIT, materialVertexProgram);<br>
+glUseProgramStages(, GL_FRAGMENT_SHADER_BIT, materialFragmentProgram);<br>
+glBindBufferRange(GL_UNIFORM_BUFFER, perMaterialFrequencyBindPoint, giantBuffer, materialConstantOffset, 65536);<br>
+glDrawElementsBaseVertex(, drawCount, GL_UNSIGNED_INT, drawIndexOffset, drawVertexOffset);<br>
+<br>
+Majority of draws use just these 4 commands even with a shader change every draw. Typically draws can leverage the same vertex attributes per draw, and the giant buffers are bound the same for all draws.<br>
+<br>
+So the engine would just in parallel queue up arrays of the following structure,<br>
+<br>
+typedef struct {<br>
+uint32_t materialVertexProgram;<br>
+uint32_t materialFragmentProgram;<br>
+uint32_t materialConstantOffset;<br>
+uint32_t drawCount;<br>
+uint32_t drawIndexOffset;<br>
+uint32_t drawVertexOffset;<br>
+} DrawPacket;<br>
+<br>
+Then have a single thread apply the outer state changes (like render target changes or blend state changes) then loop through these DrawPacket arrays. A more optimized engine could have that DrawPacket cached per loaded in-game draw object, then just queue up indexes to that structure instead.<br>
+<br>
+Or alternatively if some future GL had something which enabled compiled command lists for the original 4 API calls, drawing loop could just enqueue a replay of those cached compiled command lists. Or take this a step beyond. If doing HZB culling on the GPU of world objects per view (main scene, shadows, etc), the shader appends the {sorting index, compiled command list handle which draws an object} to a buffer. Then does a quick GPU sort. Then leverage either a hardware route to playback the buffer of handles to compiled command lists, or alternatively run a short compute shader which writes a physical command buffer which plays back the compiled command lists...<br>
+<br>
+This is a route towards getting zero overhead, getting full GPU-side scene traversal, etc.  
+
+
+
+
+
+</div></body></html>
+
+
