@@ -1,0 +1,20 @@
+<html><head><link rel="stylesheet" href="style.css"></head><body><div class="page">
+<h1>20140730 - Scanlines and Vintage TVs</h1>
+<br>
+
+Seems as if this current indie generation does not understand vintage pixel art. A pixel is not a square!<br>
+<br>
+Pixel art as defined by vintage consoles should have alternating lit and black scanlines. Up until the 30Hz dark ages, consoles ran at 60Hz on 30Hz interlaced TVs by never sending the other half of interlaced scanlines and instead tricking the TV to restart the frame from scratch. This cut max vertical resolution in half (roughly 240 lines visible) but doubled frame rate.<br>
+<br>
+I'm still looking for what I need to drive a vintage TV from my modern PC. The <a href="http://scanlines.hazard-city.de/">scanlines.hazard-city.de</a> site is a great reference. Looks like the best path is (GPU) {HDMI to DVI-I}, {DVI-I to VGA}, {Genius II Scaler Box}, {CGA to Component} (TV). The application needs to render a 720x240 frame at 59.94 Hz but manualy double scan to a VGA safe 720x480. Then the Genius II box tosses out every other line and generates a CGA friendly 15khz signal. I have yet to find a good CGA to component TV converter (everything I've found is CGA to S-Video).<br>
+<br>
+Option 2 is to try the <a href="http://www.arcadeshop.de/Audio-Video-Soft-15kHz-EDID-Dongle_1082.html">EDID Dongle</a> which was required to trick the older NVIDIA drivers to output VGA unsafe 15khz signals. Not sure if the newer cards can still even output that signal. This path results in skipping the need for the Genius II and for doing the manual double scan.<br>
+
+
+
+
+
+
+</div></body></html>
+
+
