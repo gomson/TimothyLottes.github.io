@@ -14,3 +14,6 @@ li:before { content:"> "; color:#555; }
 img { border:2px solid #111; }
 iframe { border:2px solid #111; }
 strong { color:#f42; font-weight:bold; }
+table { font-size:100%; border-spacing:0; }
+tr:first-child { background-color:#222; }
+td { padding-right:1ch; padding-left:1ch; }
