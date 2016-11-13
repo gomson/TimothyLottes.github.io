@@ -1,0 +1,22 @@
+<html><head><link rel="stylesheet" href="style.css"></head><body><div class="page">
+<h1>20140809 - Strict Aliasing</h1>
+<br>
+
+
+<i>Strict aliasing from a different perspective.
+Full disclosure,
+for the most part at home I've moved on from C to my own language 
+which is similar to an assembler 
+running from a language similar to Color Forth.
+So my bias is more towards performance and minimalism.</i><br>
+<br>
+When working in C, outside of work, I adopted labeling all pointers as either "restrict" or "volatile" (using the defines below to keep syntax tight). If needed reuse of a value read from a volatile pointer, it is read into a local variable. When working this way, strict aliasing makes no difference.<br>
+<br>
+<tt>
+#define R_ restrict<br>
+#define V_ volatile</tt><br>
+
+
+</div></body></html>
+
+
