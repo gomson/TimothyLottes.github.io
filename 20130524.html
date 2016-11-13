@@ -1,0 +1,26 @@
+<html><head><link rel="stylesheet" href="style.css"></head><body><div class="page">
+<h1>20130524 - AMD GCN GPU Scaling : Tablet To Desktop</h1>
+<br>
+
+
+Looking at single GPU products, here is a quick estimation of GPU performance scaling based off numbers from the internet,<br>
+<br>
+<pre>PRODUCT     FORM              TDP(W)  Xbox360 Factor
+----------  ----------------  ------  --------------
+A4-1200     Thin Tablet            4           0.25x
+A6-1450     Thick Tablet          8+            0.4x
+A4-5000     Small Netbook         15            0.5x
+A10-5757M   Largest Netbook       35            2.2x
+HD7970M     Largest Notebook      75            8.5x
+HD7750      $100 Desktop GPU      75            3.6x
+HD7970 GHz  $500 Desktop GPU     250           16.8x</pre>
+<br>
+The "thin tablet" probably is in the iPad4 size and power range, and looks to have similar GPU perf (1/4 of an Xbox360) but with a full DX11.1 feature set. The "thick tablet" almost reaches 1/2 Xbox360 range when in the increased clock state (a state which might be possible when plugged into a wall outlet). Integrated CPU/GPU beyond tablet ranges from 1/2x to 2x an Xbox360. Non-integrated GPU for notebook climbs to over 8x a Xbox360 on the high end. Current desktop GPUs starting at $100 are almost 4x an Xbox360, with high end non-SLI over 16x.<br>
+<br>
+Total scaling range from tablet to desktop in this table is 1:64. If one targets 1080p/60Hz at roughly 8x the Xbox360 performance, scaling up to non-SLI highend PC provides 1440p/60Hz. The drop to largest netbook is a 4x perf loss from the target, probably requiring scaling geometry down by 4x, then dropping to 30Hz with half cost pixel shading (reduce post, lower complexity lighting, etc). Hitting a tiny 15W netbook requires another 4x scaling perhaps to 540p/30Hz with 4x cut in geometry.<br>
+<br>
+This example 8x Xbox360 perf target in notebook form can be purchased currently for around $1100 (<a href="http://www.xoticpc.com/msi-gx60-1ac021us-p-5009.html">MSI GX60 1AC-021US</a>).
+
+</div></body></html>
+
+
