@@ -1,0 +1,66 @@
+<html><head><link rel="stylesheet" href="style.css"></head><body><div class="page">
+<h1>20161113 - Vintage Programming 2</h1>
+<br>
+
+This is a follow-up to the <a href="20140816.html">20140816 - Vintage Programming</a> post talking about this,
+<br>
+<br>
+<center><img src="20140816-A.png"></center>
+<br>
+
+<b>Retrospective</b>
+<br>
+Was thinking about resurecting the Atom project now that Vulkan supports what I would need to complete it,
+and had to decide upon what language to write the reboot in.
+Looking back at all my language and compiler experiments on PC over the years,
+the <tt>A Language</tt> as described in that prior post from 2014 had the most utility 
+and was the easiest to be productive on in current PC style operating systems.
+
+<br>
+<br>
+
+<b>Adjustments</b>
+<br>
+First implementation of compiler took ANSI text source file and output a binary.
+The source had to build the ELF or PE header for the binary (similar to an assembler running without a linker).
+This round, the compiler is the platform executable,
+and programs will run directly from source (JITing themselves).
+Compiler will be built around interactive run-time edit/recompile/retry loop which maintains existing program state in memory during the process.
+<br>
+<br>
+<ul>
+<li>Start: Read the source file into the top of the memory stack.
+<li>Interpret the source into binary code.
+<li>Loop: Call the binary code entry point, if source file timestamp changed exit loop.
+<li>Jump to Start.
+</ul>
+<br>
+Source can thus be edited in the background in any text editor while the program runs.
+Save the source file, and the program reloads itself while it runs.
+Likewise the source could be edited inside the program itself.
+Lots of flexibility.
+<br>
+<br>
+<b>Portability and Distribution</b>
+<br>
+One source file for any platform, source adapts to the platform as it JITs itself into binary code at run-time.
+Distribution is just pairing the platform specific compiler binary (which can be renamed to the program name),
+and the source file (which will have a set name like "rom.a", so a double click of the renamed compiler runs the application without any arguments).
+Platform specific compilers will be a few K executable depending on how minimal the ELF or PE is.
+For a secondary option at some point I'll make something which can build a single executable with the compiler embedded with source.
+<br>
+<br>
+<b>Open Source</b>
+<br>
+I'm going fully open-source for this project.
+Compiler is being written in NASM assembly with embedded PE/ELF so there is no need for any kind of linker to build the compiler.
+Thus far got a 1st draft on the PE done with all the Kernel32 symbols I believe I need, 
+with an executable which loads and then spins forever. 
+Will continue to bring up on Windows first to verify PE works on real Windows boxes, 
+before migrating back to Linux and Wine. More later as this project continues ...
+<br>
+<br>
+Work in progress here: <a href="https://github.com/TimothyLottes/A">github.com/TimothyLottes/A</a>
+</div></body></html>
+
+
