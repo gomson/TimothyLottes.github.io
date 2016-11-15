@@ -1,0 +1,49 @@
+<html><head><link rel="stylesheet" href="style.css"></head><body><div class="page">
+<h1>20161114 - Believing in an Image</h1>
+<br>
+<center><i>Click on an image below for the full 1080p shot</i></center>
+<br>
+<b>Distraction Free Rendering</b>
+<br>
+The stills below are from the filtering talk I gave a while back.
+Showing a journey through some folded fractal space.
+They are captures from a real-time tracer running at over 120 Hz at 1080p on a 2.8 Tflop/s laptop GPU.
+<br>
+<br>
+The images have better than 1080p resolution phase response, 
+meaning you can localize the position of an edge to a sub-pixel position.
+However the images have lower than 1080p frequency response,
+meaning the images look substantially sharper when viewed at half resolution.
+This is a direct result of the following process,
+<br>
+<br>
+<ul>
+<li>Each frame traces 960x540 rays in a temporally changing low-discrepancy pattern.
+<li>The rays also sample their prior color as reprojected from the prior 1920x1080 frame.
+<li>Finaly the {new,old} output at low-descrepency 960x540, is reconstructed at regular grid 1920x1080.
+</ul>
+<br>
+As you move through the space in real-time,
+the output feels like a window into another world.
+There is nothing in the visual output which breaks immersion.
+It makes no difference that in terms of sharpness this could only qualify as a 480x270 image 
+if the evaluation metric was to match the visual sharpness of bitmap text.
+<br>
+<br>
+<strong>The critical element is a total lack of any kind of temporal aliasing,
+mixed with sub-pixel precision for localizing all edge gradients.</strong>
+<br>
+<br>
+<center>
+<a href="20161114-A.bmp"><img src="20161114-A.bmp" width=800></a><br><br>
+<a href="20161114-B.bmp"><img src="20161114-B.bmp" width=800></a><br><br>
+<a href="20161114-C.bmp"><img src="20161114-C.bmp" width=800></a><br><br>
+<a href="20161114-D.bmp"><img src="20161114-D.bmp" width=800></a><br><br>
+<a href="20161114-E.bmp"><img src="20161114-E.bmp" width=800></a><br><br>
+<a href="20161114-F.bmp"><img src="20161114-F.bmp" width=800></a><br><br>
+</center>
+
+
+</div></body></html>
+
+
