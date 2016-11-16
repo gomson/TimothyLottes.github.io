@@ -1,0 +1,37 @@
+<html><head><link rel="stylesheet" href="style.css"></head><body><div class="page">
+<h1>20071026 - Transform Feedback</h1>
+<br>
+
+<i>Transform feedback + multiple drawing passes is providing to be an excellent solution to the problem of the Geometry Shader pipe being too slow to be useful!</i>
+<br><br>
+
+Transform feedback basically is a SM4.0 feature which allows the output of a vertex shader to be written into one or more VBOs (vertex buffer objects). On my GeForce 8600 GTS up to 4 VBOs can be written to in one transform feedback pass. Furthermore up to 16 FP32 values can be written to each of those four VBOs. So this enables a transform feedback pass to output up to 16 new vec4 points per point input. Easy data expansion, and a very quick way to turn a single particle into an output triangle.
+<br><br>
+
+So with transform feedback solving the geometry expansion issues, I tried separate drawing passes to each side of the cubemap (instead of using gl_Layer in a Geometry Shader). <strong>This new method is almost 20 times faster than using the Geometry Shader!</strong>
+<br><br>
+
+Now to avoid re-calculating flat varyings (per primitive values, instead of per vertex) in the vertex shaders, and to keep these values well cached between vertexes of the same triangle, texture buffer objects should do just fine. So one early point to point VS pass to generate an interleaved VBO with per primitive values. Then map this VBO as a texture buffer object, and use gl_PrimitiveID to build an index into the texture buffer object in future vertex shaders. I believe this is the absolute fastest path on the GPU for what I am doing.
+<br><br>
+<b>Other Optimization Progress</b><br>
+
+So I've managed to offload a large part of the CPU time by getting the motion card pass on the GPU. For the sake of getting this done, I'm archiving my ray tracing ideas for some future project. So the drawing pipeline is doing to be very similar to what I have already working, except now I have extra environmental lighting from the cubemap.
+<br><br>
+
+I've also gone back through my stencil based reverse drawing code again, and found that turning off the alpha test and using the stencil test actually works quite well. Much better than turning off the stencil and turning on the alpha test. This almost makes me wonder if the GeForce 8 series has some block based stencil hardware to reject blocks of fragments (the AMD/ATI HD card has a hierarchical stencil buffer). Perhaps with the alpha test on, this hardware was disabled. One bonus of having the stencil test is that now I have another method for frame rate control, using the stencil to limit the number of times of overdraw per pixel.
+<br><br>
+<b>Tossing the HDR Code</b><br>
+
+That is right, I'm no longer using it. First off the lower-end GeForce 8 cards take 2 times longer to fetch a bilinear filtered FP16 pixel, and 2 times longer to blend FP16 output in the ROP than the same operations with 8bit values. Not to mention the extra memory bandwidth and texture cache misses. With the amount of overdraw I use, this cost just wasn't worth it.
+<br><br>
+
+Second, I don't like overblown overexposure. From a fine art photography perspective, HDR like extreme overexposure easily ruins an otherwise good photograph. Highlights should near clip or perhaps only clip a little at a point light source like say the sun. Otherwise highlights should have detail.
+<br><br>
+
+Turns out with my mix of atmospheric lighting (I render atmospheric spaces in-between surfaces), it is just too easy to limit lighting and lighting feedback to values under the clipping point. I can still get near bloom with the added bonus of having detail there, and with colored lights, they still bleed to surrounding objects.
+<br><br>
+
+
+</div></body></html>
+
+

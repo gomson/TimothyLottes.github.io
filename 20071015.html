@@ -1,0 +1,22 @@
+<html><head><link rel="stylesheet" href="style.css"></head><body><div class="page">
+<h1>20071015 - Drawing in Reverse II</h1>
+<br>
+
+I finally got around to doing the reverse drawing with hierarchical Z buffer Z-Cull, and measuring the performance difference with a static VBO. Well the results are in and it is a draw. The benefit was about 10%.
+<br><br>
+The extra cost of drawing the x/4 by y/4 32bit scaler float framebuffer using stencil, then turning each of those pixels into a 4x4 pixel quad to render Z into the full size depth buffer, and finally doing the full size drawing pass, is too much extra work. The overhead is something like 25% of the original drawing pass, for only a 35% gain.
+<br><br>
+<b>However</b><br>
+After more testing, the performance found previously by drawing front first was simply a side effect of turning on the alpha test and throwing out ROP fragments with alpha under 0.0625. Stencil test wasn't even needed for the performance increase. I need 16x overdraw at a minimum to draw the frame anyway, and had 32x max in some areas but these were minor.
+<br><br>
+In the end I need front first drawing for the physics scatter passes, so the front first is here to stay, and as it turns out I got a 10% improvement simply using the alpha test.
+<br><br>
+<b>What is Next</b><br>
+Still working on the optimization of the engine. I'm taking a 1-2 week gamble on a full rewrite to a new combined overdraw culling and physics algorithm on the GPU. Current CPU time is roughly 16% tree prune, 32% overdraw cull, 16% particle to motion blurred imposter, and 36% generation double precision geometry work (tree traversal, etc).
+<br><br>
+With the new system I'm moving 50% to the GPU, and optimizing, through simplification, of the rest of the CPU bound code. Also switching my version of the "broad phase" collision detection pass from texture arrays to a mipmaped cubemap (rendering to the various mipmaps seperately). More later when I know if it works or fails!
+ 
+
+</div></body></html>
+
+

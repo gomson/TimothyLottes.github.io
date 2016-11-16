@@ -1,0 +1,22 @@
+<html><head><link rel="stylesheet" href="style.css"></head><body><div class="page">
+<h1>20071024 - Geometry Shader Woes</h1>
+<br>
+
+<b>Motion Card Drawing to Cubemap Prototype</b>
+<br>
+I decided to try porting my older raster based image compositing pipeline (sorted rendering of motion cards, basically motion stretched billboards), and get it working with cubemaps. And it works, but with a few problems.
+<br><br>
+As I hinted before, Z aligned motion cards wouldn't work because of the seams. So I had to switch to actual 3D geometry for the cards. Getting eye perpendicular cards drawn wasn't too much of a problem, and this did fix the seams. Since I'm not using a Z buffer (pre-sorted), and I wanted to have infinite detail both near and far, I cooked my own projection for each motion card. This insured that I would not have precision issues for clipping near and infinitely far.
+<br><br>
+All my billboards are stretched in the direction of motion, and also can be non-square. Computing and generating the proper bounding geometry took me a few days to figure out. What I ended up with was a quick simple algorithm which outputs a quad divided into 4 triangles (the point at the center insures proper interpolation for fragment shader).
+<br><br>
+<b>Problems</b><br>
+Unlike my working engine, I tried to switch my generation of motion card geometry to a geometry shader. Combined this with output to six sides of a cubemap at once, and the GPU slows to a crawl with 64K motion cards per cubemap face. Switching to rendering to one face and outputing 6x the number of motion cards actually performed much much better. So apparently the single pass render to cubemap idea doesn't work all that well. I'm going to need to go back to my previous methods. Geometry shader usage is way too slow.
+<br><br>
+<b>Future</b><br>
+I have a feeling that drawing 6 passes, one to each cubemap face, is many times faster than trying to use a geometry shader. This might be good news for getting this ported to SM3.0. Speaking of SM3.0 and creation of geometry, Gernot Ziegler's HistoPyramids looks like a really good alternative to geometry shader usage for a variety of situations...
+
+
+</div></body></html>
+
+

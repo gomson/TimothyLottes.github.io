@@ -1,0 +1,96 @@
+<html><head><link rel="stylesheet" href="style.css"></head><body><div class="page">
+<h1>20071018 - Cubemap Concepts</h1>
+<br>
+
+<i>(Lost the Image)</i>
+<br>
+<br>
+<b>What Am I Looking At?</b><br>
+
+A fisheye projection (270 degree horizontal FOV I think) at 640x480 from a 224x224 cubemap (linear filtered) with a single pixel line pattern on each face. Basically a resolution test, areas of very strong moire patters are over-sampled compared to screen space, and areas of the flat line pattern are 1:1 or under-sampled. One more very important note, 640x480=300K and 224x224x6=294K.
+<br>
+<br>
+<b>A Fresh Idea</b><br>
+
+I've always been a fan of fisheye and wide angle projections, and the ability to see behind yourself in a game, especially a FPS, is just awesome. Like many good ideas, it has been done before, checkout Fisheye Quake. But it isn't done often. There is no projection transform in OpenGL which can output a fisheye projection. Fisheye projections also removes the ability to do a flat screen image space motion blur (the projection curves straight lines). Bottom line is that fisheye projections are cool, but deemed impractical.
+<br>
+<br>
+
+However, with the ever faster GPU, rendering into a cubemap first, then projecting the fisheye is possible. And as can be seen above, for the equivalent number of pixels (single screen vs cube pixels), the output resolution is similar for ultra wide angles.
+<br>
+<br>
+<b>Pros and Cons</b><br>
+
+First obvious advantage of having a cubemap of the entire view surrounding a player is that now there is a free accurate environment map to use in lighting. And if the mipmap levels for the cubemap are generated, a LOD bias can be used in the environment map as a surface property for sharp or diffuse reflections. Another huge win with the cubemap in Atom is that I am planning on extending my physics to use cubemaps, so the geometry passes could be merged between the physics and drawing pass.
+<br>
+<br>
+
+There are some serious challenges with cubemaps however. First the cubemap must be seamless for visual rendering. This is a serious problem for Atom. Atom's current rendering implementation uses many incorrect optimization hacks to basically composite motion blurred particles which reflect, bend, and emit light, all in screen space. And since these effects are not raytraced, rendering to the sides of the cubemaps would generate very bad seams where a particle crossed between two different image space planes.
+<br>
+<br>
+<b>Now For the Guts</b><br>
+
+I have an idea, which might work, and if it does it will be spectacular. The basic concept is to use ideas from the physics engine to make a O(1) time lookup for ray intersections in cubemap space (single cubemap lookup), then raytrace the first intersection between the eye ray and particles.
+<br>
+<br>
+
+Now for the even stranger part, what I am going to try compositing (sorted alpha blending) into the cubemap is going to be particle center position, radius, and other properties. Also I'm going to be splitting up the particles by projected size, larger particles in smaller mipmap layers in the cubemap (very important, more on this later). The alpha blending serves to blend particles into more of a meta-ball like surface, and if I draw lines into the cubemap along the motion of the particle, I will have free motion blur!
+<br>
+<br>
+
+Yep that's right, I'm alpha blending Z. Sure it is a no-no, but in my case not a problem (I've been doing this for a while now). My blending is front first (reverse painters), thus I have the alpha coverage value for each pixel. So it is easy to take non-full coverage Z values and correct them.
+<br>
+<br>
+
+Atom by its very structure has a hierarchical metaball like surface, where layers are blended in and out for LOD control. Previously I had some problems with Z ordering changing between parent and child particles in the hierarchy, causing visible popup (can be seen on one of the videos on this site). Now what I am going to do is a set of pyramid rendering passes, rendering the different meta surface hierarchies in different mipmap levels. The less detailed particles are computed in smaller resolution mipmap levels. Should save a tremendous (4x) amount of computation time and remove my overdraw problems...
+<br>
+<br>
+
+The key to this hierarchical rendering is to only render certain properties at the reduced size (planning on ray intersection detection, normal generation, and alpha computation). Then do one full size (mipmap level 0) pass where I read from the eight smaller mipmap layers, Z sort and do both emmitive and environment reflective lighting for each layer. With proper Z ordered alpha blending between the results of each layer.
+<br>
+<br>
+
+Another trick I'm already doing is re-circulating the environmental light from the previous frame into the current frame. In a way it is like fake radiosity. The motion blur tends to hide the fact that it take a few frames to converge, based on the LOD factor in the environmental lighting pass. But the results are awesome, and no one has yet noticed how the lighting "converges" in a few milliseconds as the view changes.
+<br>
+<br>
+
+Will this major change work? Perhaps, will take a while to find out.
+<br>
+<br>
+<b>What About Physics</b><br>
+
+<i>I read that quote on your blog - Collisons via mipmapped cubemaps - and was intrigued as to what you're planning. I'm somehow not imaging an algorithm that would fit the description, but I am super curious about what you're thinking there. If you feel inspired, a few paragraphs in your blog would be cool :-)</i>
+<br>
+<br>
+
+First off, ultimately for any physics/CFD interaction there is a problem of a large world space, and sparsely grouped items to interact with (the "broad phase" problem). Options are, spacial hash function, uniform grid, or something else to figure out what items are close enough to interact. Subdivision algorithms suffer from a O(ln) run time. So might as well toss all of those out, with many objects composed of particles, O(1) is the only way to go. Uniform grid breaks down for large spaces, (BTW, great example of uniform grid in Chapter 29 of GPU Gems III). So lets toss that out as well. What is left?
+<br>
+<br>
+<b>Something New</b><br>
+
+Subdivision for collision detection I've tossed out. However Atom already has all particles in a hierarchical tree structure, and each child particle is in the coordinate space of the parent, and thus each child is automatically effected by the movement of the larger parent particle. So in this way I have a free (from the physics engine's standpoint) form of subdivision which is not used for collision, but which has a O(ln) reduction in the complexity of the physics code.
+<br>
+<br>
+
+Now one really important observation, as the number of particles or objects increase, a persons ability to find incorrect particle interactions decreases. In Atoms case, there are about 65536 particles active at a given time, and not all of those have to be 100% correctly interacting. What is important is a few key properties. First that what is hidden requires a much less accurate interaction than what is visible. Likewise higher energy interactions need to be much more accurate than lower energy interactions.
+<br>
+<br>
+
+Sounds like a great hash function to me!
+<br>
+<br>
+
+Exactly. To implement this idea, the hash function is simply the same cubemap used for the view rendering, with larger (projected radius) particles in smaller mipmap levels, and with particles drawn in a very specific order. Ordering is front first (once a bin, or "texel", is filled, it is no longer written to), with a energy level override so that high energy particles can fluidly have a higher priority than the lower energy front most particles. Essentially the viewing projection itself is a major component of the spacial hash. To recap, first render the particles (or particle properties in my case) for each particle in the cubemap, then check for "collisions" by looking up the particles in the cubemap around your particle and check other mipmap layers for larger and smaller particle interactions.
+<br>
+<br>
+
+Sure some particles get lost in this hashing, it is a contracting hash which is not reversible. If this was a problem the idea could be extended with a stencil select binning algorithm to allow multiple particles per bin, but I'm not going this route. I'm already blending my physics CFD particle properties much like what I am planning on doing with my raytracing idea above.
+<br>
+<br>
+<b>Still Reading?</b><br>
+
+I'm usually done when I don't see good screen shots. Well, I will be posting as I work this idea from concept to completion ... care to take a stab at the number of vertex, geometry, fragment shaders, and drawing passes that are going to be needed to get this new pipeline working? Might take a while!
+
+</div></body></html>
+
+

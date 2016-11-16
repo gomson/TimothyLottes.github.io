@@ -1,0 +1,58 @@
+<html><head><link rel="stylesheet" href="style.css"></head><body><div class="page">
+<h1>20071025 - Motion Cards</h1>
+<br>
+
+<i>(Lost all the Images)</i>
+<br>
+<br>
+
+Here is a shot from todays work. It is of a 360 degree fisheye projection of a few thousand motion cards rotating around the camera really really fast.
+<br>
+<br>
+<b>Triangle Reduction, From 4 to 1</b><br>
+
+Today I rewrote the motion card engine again, this time with a single triangle per motion card instead of 4. The aim here is to increase the efficiency of the geometry side of the engine now that I am planning on rendering 6 sides of a cubemap per frame. One thing I am guessing on is that when the GPU rasterizes small triangles which only cover a few pixels, that a chunk of SPUs are shading pixels which are not even in the polygon (since the GeForce 8 series has something like 8x4 fragment shader granularity). So changing from four tiny triangles per particle to one should provide somewhat of a performance boost in the fragment shading as well.
+<br>
+<br>
+<b>Ellipsoid Rendering</b><br>
+
+Anyone remember the Ecstatica game series from Psygnosis in 1997? Here is a screen shot,
+<br>
+<br>
+<center><img src="http://www.mobygames.com/images/i/01/30/461630.png"></center>
+<br>
+
+
+The Atom engine is similar in concept, but taken to the next level. Instead of rendering with polygons, the basic primitive in the engine is an ellipsoid, limited to 2 radii instead of three. The motion card part of the engine composites the motion blurred ellipsoids into the framebuffer, and the rendering part of the engine turns each ellipsoid into a shaded impostor.
+<br>
+<br>
+
+Here is a few flat shaded ellipsoid primatives (fisheye projection curves them).
+<br>
+<br>
+
+Then a little motion.
+<br>
+<br>
+
+Then a lot of motion.
+<br>
+<br>
+
+And finally showing triangle primitives created by a large motion case.
+<br>
+<br>
+
+The engine uses a alpha falloff under motion to insure a correct transparency for each moving particle.
+<br>
+<br>
+<b>What's Next</b><br>
+
+Still need to find a faster output path than the geometry shaders. I'm thinking of trying a trick to use transform feedback on points (one point per motion card) in a vertex shader and then output three interleaved attributes (for the triangle) in a VBO. Then later read in as a non-interleaved array of vertexes for triangles for all my cubemap passes.
+
+
+
+
+</div></body></html>
+
+
