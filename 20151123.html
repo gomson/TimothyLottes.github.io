@@ -1,0 +1,191 @@
+<html><head><link rel="stylesheet" href="style.css"></head><body><div class="page">
+<h1>20151123 - Cross-Invocation Data Sharing Portability</h1>
+<br>
+
+<i>A general look at the possibility of portability for dGPUs with regards to cross-invocation data sharing
+(aka to go next after <a href="https://www.opengl.org/registry/specs/ARB/shader_ballot.txt">ARB_shader_ballot</a> which starts exposing useful SIMD-level programming constructs).
+As always I'd like any feedback anyone has on this topic, feel free to write comments or contact me directly.
+Warning this was typed up fast to collect ideas, might be some errors in here...</i><br>
+<br>
+References:
+<a href="https://www.opengl.org/registry/specs/NV/shader_thread_group.txt">NV_shader_thread_group</a> |
+<a href="https://www.opengl.org/registry/specs/NV/shader_thread_shuffle.txt">NV_shader_thread_shuffle</a> |
+<a href="http://amd-dev.wpengine.netdna-cdn.com/wordpress/media/2013/07/AMD_GCN3_Instruction_Set_Architecture.pdf">AMD GCN3 ISA Docs</a><br>
+<br>
+
+<b>NV Quad Swizzle (supported on Fermi and beyond)</b>
+<br>
+<tt>shuffledData = quadSwizzle{mode}NV({type} data, [{type} operand])</tt><br>
+Where,<br>
+(1.) "mode" is {0,1,2,3,X,Y}<br>
+(2.) "type" must be a floating point type (implies possible NaN issues issues with integers)<br>
+(3.) "operand" is an optional extra unshuffled operand which can be added to the result<br>
+The "mode" is either a direct index into the 2x2 fragment quad, or a swap in the X or Y directions.<br>
+<br>
+<b>AMD GCN DS_SWIZZLE_B32</b>
+<br>
+<tt>swizzledData = quadSwizzleAMD({type} data, mode)</tt><br>
+Where,<br>
+(1.) "mode" is a bit array, can be any permutation (not limited to just what NVIDIA exposes)<br>
+(2.) "type" can be integer or floating point<br>
+<br>
+<b>Possible Portable Swizzle Interface</b>
+<br>
+<tt>bool allQuad(bool value) // returns true if all invocations in quad are true</tt><br>
+<tt>bool anyQuad(bool value) // returns true for entire quad if any invocations are true</tt><br>
+<tt>swizzledData = quadSwizzleFloat{mode}({type} data)</tt><br>
+<tt>swizzledData = quadSwizzle{mode}({type} data)</tt><br>
+Where,<br>
+(1.) "mode" is the portable subset {0,1,2,3,X,Y} (same as NV)<br>
+(2.) "type" is limited to float based types only for quadSwizzleFloat()<br>
+This is the direct union of common functionality from both dGPU vendors.
+NV's swizzled data returns 0 for "swizzledData" if any invocation in the quad is inactive according to the GL extension.
+AMD returns 0 for "swizzledData" only for inactive invocations.
+So the portable spec would have undefined results for "swizzledData" if any invocation in the fragment quad is inactive.
+This is a perfectly acceptable compromise IMO.
+Would work on all AMD GCN GPUs and any NVIDIA GPU since Fermi for quadSwizzlefloat(), and since Maxwell for quadSwizzle() (using shuffle, see below),
+this implies two extensions.
+Quads in non fragment shaders are defined by directly splitting the SIMD vector into aligned groups of 4 invocations.<br>
+<br>
+<br>
+<br>
+<b>NV Shuffle (supported starting with Maxwell)</b>
+<br>
+<tt>shuffledData = shuffle{mode}NV({type} data, uint index, uint width, [out bool valid])</tt><br>
+Where,<br>
+(1.) "mode" is one of {up, down, xor, indexed}<br>
+(2.) "data" is what to shuffle<br>
+(3.) "index" is a invocation index in the SIMD vector (0 to 31 on NV GPUs)<br>
+(4.) "width" is {2,4,8,16, or 32}, divides the SIMD vector into equal sized segments<br>
+(5.) "valid" is optional return which is false if the shuffle was out-of-segment<br>
+Below the "startOfSegmentIndex" is the invocation index of where the segment starts in the SIMD vector.
+The "selfIndex" is the invocation's own index in the SIMD vector.
+Each invocation computes a "shuffleIndex" of another invocation to read "data" from, then returns the read "data".
+Out-of-segment means that "shuffleIndex" is out of the local segment defined by "width".
+Out-of-segment shuffles result in "valid = false" and sets "shuffleIndex = selfIndex" (to return un-shuffled "data").
+The computation of "shuffleIndex" before the out-of-segment check depends on "mode".<br>
+<tt>
+(indexed) shuffleIndex = startOfSegmentIndex + index<br>
+(_____up) shuffleIndex = selfIndex - index<br>
+(___down) shuffleIndex = selfIndex + index<br>
+(____xor) shuffleIndex = selfIndex ^ index</tt><br>
+<br>
+
+<b>AMD DS_SWIZZLE_B32 (all GCN)</b>
+<br>
+Also can do swizzle across segments of 32 invocations using the following math.<br>
+<tt>
+and_mask = offset[4:0];<br>
+or_mask = offset[9:5];<br>
+xor_mask = offset[14:10];<br>
+for (i = 0; i < 32; i++) {<br>
+j = ((i & and_mask) | or_mask) ^ xor_mask;<br>
+thread_out[i] = thread_valid[j] ? thread_in[j] : 0; }</tt><br>
+The "_mask" values are compile time immediate values encoded into the instruction.<br>
+<br>
+<b>AMD VOP_DPP (starts with GCN3: Tonga, Fiji, etc)</b>
+<br>
+DPP can do many things,<br>
+For a segment size of 4, can do full permutation by immediate operand.<br>
+For a segment size of 16, can shift invocations left by an immediate operand count.<br>
+For a segment size of 16, can shift invocations right by an immediate operand count.<br>
+For a segment size of 16, can rotation invocations right by and immediate operand count.<br>
+For a segment size of 64, can shift or rotate, left or right, by 1 invocation.<br>
+For a segment size of 16, can reverse the order of invocations.<br>
+For a segment size of 8, can reverse the order of invocations.<br>
+For a segment size of 16, can broadcast the 15th segment invocation to fill the next segment.<br>
+Can broadcast invocation 31 to all invocations after 31.<br>
+Has option of either using "selfIndex" on out-of-segment, or forcing return of zero.<br>
+Has option to force on invocations for the operation.<br>
+<br>
+<b>AMD DS_PERMUTE_B32 / DS_BPERMUTE_B32 (starts with GCN3: Tonga, Fiji, etc)</b>
+<br>
+Supports something like this (where "temp" is in hardware),<br>
+<tt>bpermute(data, uint index) { temp[selfIndex] = data; return temp[index]; }</tt><br>
+<tt>permute(data, uint index) { temp[index] = data; return temp[selfIndex]; }</tt><br>
+<br>
+<br>
+
+<b>Possible Portable Shuffle Interface : AMD GCN + NV Maxwell</b>
+<br>
+<i>This is just a start of ideas, have not had time to fully explore the options, feedback welcomed...</i><br>
+SIMD width would be different for each platform so developer would need to build shader permutations for different platform SIMD width in some cases.<br>
+<br>
+SEGMENT-WIDE BUTTERFLY<br>
+<tt>butterflyData = butterfly{width}({type} data)</tt><br>
+Where "width" is {2,4,8,16,32}.
+This is "xor" mode for shuffle on NV, and DS_SWIZZLE_B32 on AMD (with and_mask = ~0, and or_mask = 0) with possible DPP optimizations on GCN3 for "width"={2 or 4}.
+The XOR "mask" field for both NV and AMD is "width>>1".
+This can be used to implement a bitonic sort (see <a href="http://on-demand.gputechconf.com/gtc/2013/presentations/S3174-Kepler-Shuffle-Tips-Tricks.pdf">slide 19 here</a>).<br>
+<br>
+SEGMENT-WIDE PARALLEL SCAN<br>
+TODO: Weather is nice outside, will write up later...<br>
+<br>
+
+SEGMENT-WIDE PARALLEL REDUCTIONS<br>
+<tt>reducedData = reduce{op}{width}({type} data)</tt><br>
+Where,<br>
+(1.) "op" specifies the operation to use in the reduction (add, min, max, and, ... etc)<br>
+(2.) "width" specifies the segment width<br>
+At the end of this operation only the largest indexed invocation in each segment has the result,
+the values for all other invocations in the segment are undefined.
+This enables both NV and AMD to have optimal paths.
+This uses "up" or "xor" mode on NV for log2("width") operations.
+Implementation on AMD GCN uses DS_SWIZZLE_B32 as follows,<br>
+<tt>
+32 to 16 => DS_SWIZZLE_B32 and_mask=31, or_mask=0, xor_mask=16<br>
+16 to 8 => DS_SWIZZLE_B32 and_mask=31, or_mask=0, xor_mask=8<br>
+8 to 4 => DS_SWIZZLE_B32 and_mask=31, or_mask=0, xor_mask=4<br>
+4 to 2 => DS_SWIZZLE_B32 and_mask=31, or_mask=0, xor_mask=2<br>
+2 to 1 => DS_SWIZZLE_B32 and_mask=31, or_mask=0, xor_mask=1<br>
+64 from finalized 32 => V_READFIRSTLANE_B32 to grab invocation 0 to apply to all invocations</tt><br>
+Implementation on AMD GCN3 uses DPP as follows,<br>
+<tt>
+16 to 8 => reverse order of 16-wide (DPP_ROW_MIRROR)<br>
+__0123456789abcdef__<br>
+__fedcba9876543210__<br>
+8 to 4 => reverse order of 8-wide (DPP_ROW_HALF_MIRROR)<br>
+_01234567_<br>
+_76543210_<br>
+4 to 2 => reverse order using full 4-wide permutation mode<br>
+__0123__<br>
+__3210__<br>
+2 to 1 => reverse order using full 4-wide permutation mode<br>
+__0123__<br>
+__1032__<br>
+32 from finalized 16 => DPP_ROW_BCAST15<br>
+__...............s...............t...............u................__<br>
+__................ssssssssssssssssttttttttttttttttuuuuuuuuuuuuuuuu__<br>
+64 from finalized 32 => DPP_ROW_BCAST32<br>
+__...............................s................................__<br>
+__................................ssssssssssssssssssssssssssssssss__<br>
+</tt><br>
+<tt>reducedData = allReduce{op}{width}({type} data)</tt><br>
+The difference being that all invocations end up with the result.
+Uses "xor" mode on NV for log2("width") operations.
+On AMD this is the same as "reduce" except for "width"={32 or 64}.
+The 64 case can use V_READLANE_B32 from the "reduce" version to keep the result in an SGPR to save from using a VGPR.
+The 32 case can use DS_SWIZZLE_B32 for the 32 to 16 step.
+<br>
+<br>
+<br>
+
+
+
+<b>Possible Portable Shuffle Interface 2nd Extension : AMD GCN3 + NV Maxwell</b>
+<br>
+<i>This is just a start of ideas, have not had time to fully explore the options, feedback welcomed...</i><br>
+SIMD width would be different for each platform so developer would need to build shader permutations for different platform SIMD width in various cases.<br>
+<br>
+SIMD-WIDE PERMUTE<br>
+Backwards permutation of full SIMD width is portable across platforms, maps on NV to shuffleNV(data, index, 32), and DS_BPERMUTE_B32 on AMD,<br>
+<tt>permutedData = bpermute(data, index)</tt><br>
+
+
+
+
+ 
+
+</div></body></html>
+
+
