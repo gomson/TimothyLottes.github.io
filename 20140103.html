@@ -1,0 +1,23 @@
+<html><head><link rel="stylesheet" href="style.css"></head><body><div class="page">
+<h1>20140103 - Killzone Shadow Fall Multiplayer After 50 Hours</h1>
+<br>
+
+
+<i>Just crossed the 50 hour mark in Killzone Shadow Fall multiplayer, here are a few thoughts about the game as a fan of the series (I'm OxDEAFB175 on PSN).</i><br>
+<br>
+
+Anyone know what the active multiplayer user base is? Looks like my running average is around 1 hour/day. Guessing I also only see players from North America. If the average number of players is around 2K at any time, and everyone had the same 1 hour/day average as me, that would be around 48K players total. The game sold over 450K units in North America. 48K is over 10% of that total. Would be really interested to see what the real stats were. As a player, I only see value in the game in the multiplayer. By later in 2014 this game will amortize out less than $1/hour for me, which is good !/$ for entertainment. IMO, it would be great to see the series go to multiplayer-only if Guerrilla ever decided to focus the studio on new IP. Take a tight small separate team and continue to release Killzone for those who remain addicted to the multiplayer.<br>
+<br>
+I play KZSF by forcing 720p from the PS4 system menu. Seems like the game still renders 1080p but the PS4 down-samples to 720p before output to the TV (which scales back to 1080p). This forces some super-sampling at the expense of sharpness, and greatly improves the pixel quality. I'd like to see future engine from Guerrilla return to the KZ2 style pipeline of 2xMSAA G-buffer rendering with amortized super-sampled shading but evolved for the PS4. Specifically render at 1280x640 at 60Hz with super-sampled 4xMSAA (this 2:1 letter box is a nice multiple of 128 for easy large kernel post filtering). Certainly the fast path on GCN is to instead render 2560x1280 without MSAA but use the programmable sample hardware to get the 4xMSAA sample pattern. After shading and post processing, do a standard gaussian resampling filter to get to 1280x640 and output letter-boxed 720p at 60Hz. Like KZ2, amortize shading under the knowledge of super-sampling. For instance take less shadow taps/pixel, and run specular per pixel, but run diffuse shading at 2x2 pixel quad granularity, during shading use surface stores to write out both the 2560x1280 down-sampled 1280x640 and 640x320 frames for use in post filtering (save some passes), etc.<br>
+<br>
+Top item on my list to fix in multi-player is the load times, would be nice to have in-game streaming for everything. I'm missing the self revive skill and the armor from the prior game. It was great to torment players running around solo as the bullet sponge with the highest brutal melee count who manages to come back from the dead. The new KZSF sliding mechanic is great especially with quick reload of the pistol. However the added delay between some of the pistol's rounds is fail. Also not happy with the lack of ability to run or melee with some weapons.<br>
+<br>
+Thus far I've only played random games, but I need to try out the party feature. Anyone reading a serious KZSF multiplayer, feel free to friend me: OxDEAFB175 (O as in the letter, not the number, as required for the first character of a username).
+
+
+
+ 
+
+</div></body></html>
+
+
