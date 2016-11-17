@@ -1,0 +1,29 @@
+<html><head><link rel="stylesheet" href="style.css"></head><body><div class="page">
+<h1>20081030 - Parallel Rapid Development Architecture</h1>
+<br>
+
+<i>An experiment I'm in the process of trying right now. An attempt to solve both the development iteration time problem, and the CPU parallel processing problem in one simple system. Mixing the thread scheduling from Atom 1 with a GPGPU style design.</i>
+<br><br>
+Rough details,
+<br><br>
+1. Taking the GPU "drawcall" framework and applying it to CPUs. Program ends up as a fixed sequence of massively parallel jobs. Groups of jobs can be turned off and on to traverse primary game states such as "playing game", "in editor", or "in startup screen", etc.
+<br><br>
+2. Jobs are ordered in this sequence in groups of independent jobs (which can run in parallel). Group ends when the next job is dependent on results of a previous job. Clearly jobs are ordered (manually by the programmer) in a group such that future dependencies are finished first. Groups are separated by sync points, which in practice never stall because of proper pipelining of jobs.
+<br><br>
+3. Scheduling of jobs to available processors is done by building per processor (per hyperthread or SPU as well), lock-less single reader/writer queues. Jobs are scheduled (divided up to processors) based on expected run-time computed from previous runs. Profiling is built into system from the get go. Important concept here is that jobs for the next frame are placed in per processor queues before the next frame runs, so no stalls or sync points for scheduling!
+<br><br>
+4. To keep the system portable across machines of varying numbers of processors, the system supports data parallel computation (as well as native task parallel computation supported via the scheduler). Data parallel is supplied with the ability for a job to be divided CUDA style across multiple processors (all processors or limited to a fraction of processors). Division is based on 1, 2, or 3 dimensional division of problem. Each processor gets region of line, surface, or volume, and sub-jobs are scheduled to run at as similar a time as possible (to minimize latency of results and also maximize code and data cache performance on hyperthreaded processors).
+<br><br>
+5. Jobs are run by GPU like "kernels" which are loaded from dynamic link libraries (or on SPUs are loaded from a binary image). Program can, at end of frame sync, optionally check timestamps of source files, and re-compile and re-load libraries or dynamic binary images at run time. This directly supports fast iteration time for development. No need to restart program to change code.
+<br><br>
+6. These CPU "kernels" are attached to set chunks of memory, memory is saved to or restored from disk in binary form, to support instant reload of entire program state, at any time. Also supports fast development iteration time.
+<br><br>
+My take on portability,
+<br><br>
+Program is based on data flow through ordered jobs. Actual source code for "kernels" need not be portable, as long as data flow is portable. Number of kernels should be small, so port via rewrite of kernels for new hardware should not be a problem. Clearly things like vector register count, vector instruction latency, local store or cache size, can require different code anyway to be optimal on different hardware. So instead of attempting to use portable vector intrinsics and tricks such as variable amount of loop unrolling, to arrive at some base portability, I'm taking a step backwards with the plan to relying on fast development iteration times to rewrite core kernels for other platforms (ie PS3 port after PC/Mac/Linux version works). Also with job profiling built into the system (for scheduling), optimization iteration time should be as fast as a second to recompile a completely independent kernel (no system header files, etc).
+<br><br>
+<i>Should be well on my way to making use of this system in November. Initial results already show promise. Even if it is broken, should at least be interesting blog material..</i>
+
+</div></body></html>
+
+
