@@ -1,0 +1,93 @@
+<html><head><link rel="stylesheet" href="style.css"></head><body><div class="page">
+<h1>20080628 - Micro Polygons</h1>
+<br>
+
+
+<b>On the Previous Post</b>
+<br>
+I have no idea how many people actually read this and can get used to how I am constantly running in multiple directions all the time. So a quick update on the previous post, I did manage to quickly prototype my all post-processing in one pass with the same samples idea, and a large amount of it actually works quite well. Given that post processing can be over 30% of the GPU cost of rendering a game's frame and is usually 100% texture bound, there are free lots of ALU cycles to use to figure out where to sample and what to do with the samples. Biggest surprise was how well the frame re-circulation anti-aliasing worked.
+<br>
+<br>
+
+<i>Moved back to non-polygon rendering again so this works sleeps now.</i>
+<br>
+<br>
+<b>Another Missing API/Hardware Feature</b>
+<br>
+For those who don't read about this stuff elsewhere on the internet first a quick refresher on GPU hardware. Fast texture reads come from compressed swizzled textures. This enables great texture cache performance. The swizzling provides 2D locality. You loose swizzle and compression when you read from a frame buffer or render target. Now texture cache misses read in full memory granularity lines (which can be large), so random accesses from a render target can really hurt, especially 32-bit texels.
+<br>
+<br>
+
+What I would like to see is the ability to have more than a 4 component frame buffer. Sure you can have up to 8 render targets in DX10, but random fetches from those 8 render targets cause a loss of texture cache efficiency. What is needed is the ability to fetch from all render targets with one global memory read. So render targets are interleaved in memory, and random access reads would be bandwidth friendly. This would be hugely useful for GPGPU in that you could randomly load/store objects at full bandwidth efficiency and utilization as long as they matched the GPU memory granularity (which is often 2 FP32 vec4s).
+<br>
+<br>
+
+This can somewhat be currently done with CUDA, if the texture is a linear texture. I still have hope that DX11's compute shader will enable GP global memory read/write from shaders. If/when that is here, this feature could be less useful.
+<br>
+<br>
+
+<i>... and finally on to the topic of this post.</i>
+<br>
+<br>
+
+<b>Micro Polygons / GPU Scatter Revisited</b>
+<br>
+
+Take a look at the FragSniffer and refresh your mind about the G80 hardware. GPUs are designed to draw frame buffer aligned 2x2 pixel quads. The parallel hardware takes care of building SIMD vectors of verts for parallel execution, then triangle setup / rasterization packs SIMD vectors of pixel quads for parallel execution, and finally write combines the results in the ROP/OM (output merger). Small triangles loose efficiency really really fast as many of the pixels in a quad are not actually in the triangle. So fragment shader efficiency tanks and GPU resources are wasted.
+<br>
+<br>
+
+The great irony of rendered graphics these days is often for any given frame, more verts are processed than there are pixels on the screen. If the GPU rasterization hardware can setup just one primitive per clock cycle, this is approximately greater than 500M tri/s, of which there are under 30M pix/s at 720P at 30Hz. Or in other words, over 16 tris per screen pixel per frame at 720P at 30Hz.
+<br>
+<br>
+
+<i>You can probably see where this train of thought leads too, but before we start with that insanity, lets go through a few more details.</i>
+<br>
+<br>
+
+Huge triangle setup ability is needed because often triangles need many passes in the rendering pipeline. For example in a typical non-deferred style engine, the same triangle might get drawn once in a pre-Z pass, another 1-4 times in shadow map generation, and perhaps another 1-4 times in lighting. Then factor in all the triangles which get culled by the view and by occlusion. So the ability to setup 16 triangles per screen pixel per frame at 720P at 30Hz starts to make sense, even when most triangles are many times larger than a single pixel.
+<br>
+<br>
+
+Now say we want to evolve our rendering pipeline and draw pixel sized micro polygons. This would be slow on current hardware right? After all G80 can only fragment shade 4 pixels per a 32 SIMD vector, so fragments shaders would run at 1/8 capacity.
+<br>
+<br>
+
+There is an answer on current DX10 level hardware, don't do work in the fragment shader. Draw points, do all the fragment shading in the vertex shader using texture fetch where the GPU is still packing at 100% efficiency for ALU SIMD computation. Setup all vertex shader outputs as GLSL SM4.0 "noperspective" so they don't get interpolated. And use the fragment shader as only a pass-though to get vertex shader outputs to the ROP stage. The ROP stage should be able to re-merge single pixel output well without a large bandwidth cost, so fragment shader and ROP should no longer be a bottleneck. Of course, the vertex shader would have to have enough work or texture fetches to hide the triangle setup bottleneck, which should be possible shading points with really complex shaders.
+<br>
+<br>
+<b>Taking Points Seriously</b>
+<br>
+
+Right, so if you can solve the following problems, a point sized triangle render could work.
+<br>
+<br>
+
+1. How to anti-alias when there isn't enough triangle setup to fill a MSAA framebuffer?<br>
+2. How to handle LOD such that all primitives are point sized?<br>
+3. How to insure minimal overdraw?<br>
+4. How to fill holes in the framebuffer when no point rasters to a given pixel?<br>
+5. How to only have one drawing pass per point primitive.<br>
+6. How to draw over points which fill holes with a pixel which should have been occluded.<br>
+7. How to manage occlusion issues.<br>
+8. And more...<br>
+<br>
+<i>Already started on a prototype.</i>
+<br><br>
+I have returned to my GPU only engine concept. Full GPU side L-system tree traversal is working, with visibility and occlusion computations only on the GPU as well. Also moved beyond cubemaps and into an octahedron map which fits into a single texture. Key here is that it can be updated via points with one draw call, where as a cubemap would require drawing each point to each face. So I'm doing the full 360 degree fisheye projection from the octahedron map from Atom's L-system based renderer. I'm not to the lighting, hole filling, or anti-aliasing yet, just got rough traversal working in the prototype, so don't expect anything awe-inspiring in the screen shots, at least yet.
+<br><br>
+<i>(Lost Images)</i>
+<br>
+<br>
+The octahedron to fisheye projection mapping looses detail towards the edges of the lens, so I'm going to handle that via a lens blur when I get around to it.
+<br><br>
+The noise and aliasing in the system is by design. These shots are simply a debug view of the results of the tree traversal. Actual lighting and rendering is going to be done via a single full screen pass using frame buffer re-circulation (no point drawing).
+<br><br>
+Doing something like 4M points a frame currently (including overdraw).
+<br><br>
+View distances are effectively infinite.
+
+
+</div></body></html>
+
+
