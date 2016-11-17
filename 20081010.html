@@ -1,0 +1,102 @@
+<html><head><link rel="stylesheet" href="style.css"></head><body><div class="page">
+<h1>20081010 - Temporal Locality</h1>
+<br>
+
+<i>An introduction to a concept...</i>
+<br>
+<br>
+<b>Rendering and Temporal Locality</b>
+<br>
+
+Take your favorite graphics engine, record an uncompressed video stream of it's output at full resolution and framerate. Now compress that output such that the average human cannot perceptually tell the difference between the compressed output and the uncompressed. First compress with Motion-JPEG then compress with MPEG4/H264. Note the drastic difference in output stream bit rate between the equivalent quality of Motion-JPEG and MPEG4. MP4 will be tiny in comparison to Motion-JPEG. Motion-JPEG compresses frames individually. So for each frame in, out comes a compressed JPEG. Motion-JPEG compression works on spacial locality only. MPEG4 on the other hand compresses using both spacial and temporal locality.
+<br>
+<br>
+
+Compression at its core is a form of factoring, simplifing and removing perpectually redundent data. In the case of video compression, the ratios can be staggering like 32:1 (Blueray) to 128:1 (such as On2, more lossy).
+<br>
+<br>
+
+<i>What can be learned from this?</i>
+<br>
+<br>
+
+Think about the amount of bandwidth and computation used by the GPU to render a relatively exact solution to something which can still be factored to something over 32 times smaller. What I am hinting at here is that there is still available a massive reduction in the amount of computation required to render motion video of 3D graphics, if one takes advantage of temporal locality. Research on this topic such as adaptive frameless rendering, render cache and even reverse reprojection caching, has only skimmed the surface of what is possible. Some insite can be gained by just taking a look at the simplified fundamentals of video compression.
+<br>
+<br>
+
+1. A video compressor takes the previous generated frame, computes and compresses a motion vector field (motion prediction).
+<br>
+<br>
+
+2. It uses the motion vector field to morph the previous frame into a new frame (ie to the prediction of the next frame). Then it takes and encodes the difference between the actual frame and this prediction. Differences are mostly small, and motion prediction exhibits high temporal similarity, so compression ratios are very high.
+<br>
+<br>
+
+Now think about the above in terms of typical rendering engines. A rendering engine can easily compute a motion vector field. Not only is it low cost (no need for the complex motion prediction algorithms used in video compression), it can be exact (video compression motion vector fields are very low quality). Using this motion vector field, one can reproject (via scatter) or reproject stable fluids advection style (via gather) the results of the previous frame to come up with a very good prediction of the next frame. Now the render only has to update the differences between the prediction and what might be computed for the next frame. In essence deal with the following issues.
+<br>
+<br>
+
+1. Diffusion, smoothing and data loss due to fractional pixel motion displacement. This could possibly be a problem depending on how fast an area gets updated. Resampling with something better than bilinear filtering can help solve the problem (such as using a smaller windowed sync function). Another option would be to only move by a full pixel each frame (use that for next frame's prediction), but keep track of a subpixel offset and do the subpixel shift when writing to the front buffer only (don't recirculate).
+<br>
+<br>
+
+2. Newly visible geometry. Such as around the edges of the screen when the view pans, etc. First, from experience, lower detail on the edges of the view under motion, will not be noticed during a game, and can also be hidden in motion blur. I've done tests on myself, manually decimating screen quality based on distance from the center of the screen and motion to prove this out. The eye simply cannot focus on a quick change in a single frame at 60 or 30 Hz. I've actually taken this to extreme with a hierarchical tree based occlusion system which can only expand and contract by a level per frame. So when the view pans fast, it has only the coarsest level of detail for the newly visible geometry. I literally have to tell people that objects only converge to high quality after a few frames. So as long as some fraction of the pixels are actually getting updated per frame, areas will tend to converge to the correct data faster than a human can notice.
+<br>
+<br>
+
+3. Lighting changes. Probably the biggest problem, which almost seems unsurmountable without a crucial observation. If re-computing only a fraction of the pixels required to draw a frame, and these pixels are mostly evenly distributed across the frame, one can use these pixels to bilaterally adjust the other pixels which are only motion predicted. The algorithm knows how much the new pixel's RGB value changed from it's location in the last frame. For other only motion predicted pixels, take the 4 nearest new pixels, and apply a weighted adjustment of the new pixel changes based on which new pixels are closest (in terms of some factor of color, position, or Z).
+<br>
+<br>
+
+<i>So there you have it, a general concept for taking advantage of temporal locality for reduction of rendering cost!</i>
+<br>
+<br>
+
+Clearly there is some overhead in the bilateral upsample, but it is relatively minor, especially when applying this to something like raytracing or raycasting. If my prediction is correct here the concept I've outlined above might even make sparce voxel octree work right now on a 360 or PS3.
+<br>
+<br>
+
+<b>One Solution to GPU Side Scene Structure, Visibility, Level of Detail, and Rendering</b>
+<br>
+
+<i>This next section is about my last engine prototype, which was designed with the above temporal locality concepts in mind, and takes to the extreme on simplification and factoring.
+</i><br>
+<br>
+
+Imagine you have a world composed of a bunch of objects, each of which has its own octree. Now replace the octree with a looser construct where a node has 8 children, but each child's position isn't fixed in the parent. In fact each child has a scale, translation, and rotation (quaternion). Effectively a "bone" per node in a hierarchical tree structure. Traverse each tree from the roots of all objects, and you have the description of the scene. Traverse all trees to visible nodes the size of (sub)pixels and you have a rendered frame. This is the basis of Atom.
+<br>
+<br>
+
+<i>Now do this on the GPU, infact do it realtime on only a 8600 GTS!</i>
+<br>
+<br>
+
+Dynamic trees require some type of dynamic memory allocation pool for nodes. Trees need pointers. Visibility needs to be exact. These are all examples of rules I broke to find a solution to the problem.
+<br>
+<br>
+
+First how to store the tree. I split up all the properties of the nodes into multiple 32bit per channel textures / render targets. Nodes have a small number of properties including position, scale, orientation (quaternion), root node id, and l-system id (index into compressed description of object). I have a 360 degree fisheye projection for the game so I use a 3D to 2D hash function to compute position of the nodes in the texture. The hash function is the 3D position of the node relative to the eye plus a random offset based on the nodes bounding radius, projected into an octahedron which is flattened into a square (gives texture coordinate of node). All nodes have a priority which is a function of distance from eye and scale (closer more parent nodes are higher priority). Hash collisions go to the highest priority node.
+<br>
+<br>
+
+Each frame I take all the nodes of the previous frame, and have them respawn only their children into the next frame. Each child node is drawn as a single point (with new properties written to MRTs), and the random offset in the hash function changes each frame. Note all computations are done in the vertex shader, and each point's Z is set to priority so the Z buffer insures the highest priority node survives hash collisions. Read my Micro Polygons / GPU Scatter Revisited post for more information on why this ends up being a fast path in GPU hardware. So I've solved all the problems of dynamic memory allocation, visibility, and level of detail with this simple structure.
+<br>
+<br>
+
+<strong>How does it work given hash collisions?</strong> As can be expected parts of the tree go missing each frame. But due to hash collision priorities and the random offset (based on node scale) added to each position during hashing, if one takes the average of the tree structure over time, it is the complete tree which solves the visibility problem. In fact it stocastically traverses to sub pixel size over time, so averaging the results provides a naturally anti-aliased image.
+<br>
+<br>
+
+<strong>What about display of the tree?</strong> Not all pixels are computed each frame, in fact some logarithmetic number of them are filled with parent nodes of the tree. Those parent nodes occlude a random real child node per frame. In fact these pixels are the salt and pepper noise seen in my early screen shots. So those pixels must be filtered out. Basically one must use the concepts covered in the previous section: compute a motion vector, reproject the previous frames contents, and use the newly computed pixels to converge the screen to this frame. Will also have to use a reduction/expansion pass to do some hole filling under fast motion. I should also note that all direct children of roots are post-drawn each frame to insure that trees are re-seeded continuously from the roots.
+<br>
+<br>
+
+<strong>What about the delay when an object moves?</strong> It takes LogBase8(TreeHeight) frames before nodes are pixel size. However each node keeps a root index so that as the root of the tree moves, so can the nodes be adjusted. Removes any delay in motion.
+<br>
+<br>
+
+That is the basis of the algorithm, I haven't covered lighting or object interaction and physics. However there are a lot of ways one can adjust and modify this core idea. For example for non-360 fisheye projections, adjust hash function to project into a standard 2D projection, but insure that nodes which intersect the screen are always drawn inside the screen (mirror around edges if nodes go out of bounds). One idea for lighting is to amortize the cost of global illumination gather (effectively raycasting into the octahedron itself) over the node's path as it spawns children each frame, perhaps use a reduction pass to find most intense lights for importance sampling. Physics and object control are open for just about anything. One could use a large number of root nodes (say in the thousands), and handle physical interaction between them in a separate system.
+
+</div></body></html>
+
+
