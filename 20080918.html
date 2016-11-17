@@ -1,0 +1,93 @@
+<html><head><link rel="stylesheet" href="style.css"></head><body><div class="page">
+<h1>20080918 - General Purpose</h1>
+<br>
+
+<b>What is General Purpose?</b>
+<br>
+For many "general purpose" means that they want the tools and work flow which they feel most comfortable and familiar solving problems with. Most often this is object oriented C++ with a integrated development environment and debugger. The glow about Larrabee is that finally a GPU will be friendly towards that model, but does this fall into the software as a platform trap. What if we take a critical look at the problems of this model which are infecting the entire computer industry, not just the gaming industry. Often development gets into the following vicious feedback loop.
+<br>
+<br>
+
+1. Problem complexity increases.
+<br>
+2. Patch/modify code to bandaid current problem.
+<br>
+3. Amount of code increases.
+<br>
+4. Build times increase.
+<br>
+5. Code-to-test iteration times increase.
+<br>
+6. Programmer productivity decreases.
+<br>
+7. Number of inflexible legacy systems which the code depends on increases.
+<br>
+8. Ability to make improvements decreases because of constrains.
+<br>
+9. Loop.
+<br>
+<br>
+
+The result is the massive, slow, and bloated systems we have today. Each generation of computers gets faster while software interfaces get slower. What is needed to exit this loop is the following.
+<br>
+<br>
+
+<strong>1. Code-to-test iteration time is instant.</strong> Even if build time is instant, the cost to restart the program and get to what needs testing might not be. So what is needed here is a development environment which runs from inside the program and enables writing and modifying the program while it is running.
+<br>
+<br>
+
+<strong>2. Program rarely crashes because of system design.</strong> Crashing would destroy the code-to-test of (1.) above, so it needs to very rarely happen regardless of what the programmer does. Most crashes are caused by an attempt to access memory which is not owned by the program. GPU hardware has the solution to this problem built in. For example outputs are naturally limited to valid destinations.
+<br>
+<br>
+
+<strong>3. Really easy to write high performance code.</strong> Also done naturally with the current GPU shader model. Write simple shader, driver JIT compiles to a batched vectorized representation which runs quite well on hardware. Then later tweak program for optimal performance.
+<br>
+<br>
+
+<strong>4. Instant performance monitoring.</strong> Ability to try something and immediately know cost in bandwidth and ALU cycles.
+<br>
+<br>
+
+<strong>5. Quick save and restore of entire or partial data state.</strong> Many console emulators have this functionality, in which the save game is the entire state of the system. Reload to return to where you were before. Now apply to development and (1.) above.
+<br>
+<br>
+
+<strong>6. Design for data flow.</strong> Solve problem by looking at required results, then figuring out a pipeline which provides the minimal bandwidth and compute resources required to get there. Solve parallelization, scalability, threading, and synchronization problems in pipeline design. The GPU has a very natural way to do this with independent and synced dependent draw calls.
+<br>
+<br>
+
+<strong>7. Factor out memory allocation and data flow into design.</strong> There is a reason why static allocation of memory, or static allocation of thread local storage for fixed size object pools works so well. Now apply this to software pipeline design. Budget computation and dataflow just as one does with memory. Layout sections of fixed software pipelines for various program states and details.
+<br>
+<br>
+
+The end result of this should be the ability to develop over an order of magnitude faster than what we have now and make even huge strides in performance and scalability. Program design becomes more like laying out a circuit, and provides a visual way of thinking about a problem. Functions transform more into patterns of pipeline layout.
+<br>
+<br>
+
+So to me "general purpose" is the ability to make use of the hardware and develop fast enough to always be able to redesign "from scratch" even as the hardware changes.
+
+<br>
+<br>
+<b>GPGPU OS?</b>
+<br>
+<i>So I've been considering taking the above ideas and putting them to prototype in the form of a simple operating system / rapid development environment which runs from the on the GPU using the CPU as a co-processor.
+</i>
+<br>
+<br>
+The GPU side logic would output asynchronous system call commands into a texture or buffer object for CPU readback. The CPU would then execute the commands. Common inputs such as keyboard, mouse, network UDP packets, audio, and disk reads would get uploaded into textures or buffer objects. I'd have a higher output latency for network and audio, but I believe it is manageable with proper pipeline design.
+<br>
+<br>
+
+The GPU would use system call commands to setup textures, framebuffers, buffers, immutable state objects, and shaders. I'd be storing all this data GPU side in fixed textures. GPU would control its execution by setup of immutable pipeline objects which contain a sequence of paired states and draw calls, then issue commands which turn on/off pipeline sequences (by id) and possibly adjust ordering. Programmer would be able to use a builtin GPU side editor to create and modify shaders from within the program, adjust objects, view/edit textures/buffers, as well as run commands and profile GPU performance (perhaps via NPerfLib feedback).
+<br>
+<br>
+
+There would be functionality to back data, ie textures and buffers to disk, for fast data record and restore ability during development. Also a hot key combination to bring up the editor/development tool in case the program goes rouge. Deployment of the finished program would be a pair of one executable (which provides a cut down version of the CPU command processor), and one data file (which contains the GPU program and data). Install is as easy as placing those two files anywhere on the computer. Porting to new platforms is as easy as placing in the proper OS and graphics backend for the system call commands.
+<br>
+<br>
+
+I'm leaving the obvious question of how does one build a general purpose text editor and tiny UI with simple shaders, a small number of draw calls, and a fixed pipeline, to really be answered another time (and it is surprisingly not that complicated, and easier than it would be in C/C++).
+
+</div></body></html>
+
+
