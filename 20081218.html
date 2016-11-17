@@ -1,0 +1,10 @@
+<html><head><link rel="stylesheet" href="style.css"></head><body><div class="page">
+<h1>20081218 - Reprojection 2</h1>
+<br>
+<b>Recirculation Motion Blur Update</b>
+<br>
+Doing a few prototypes an evening now. Found better results by adding in motion blur and returning to an earlier idea. New best found solution does a hole filling pass on the new data weighted by a function of projected point size and depth (this "quality factor" is stored in the Alpha channel), so smaller more detailed front most points override larger or more distant points. Currently just doing a 1x1:1 -> 4x4:1 -> 16x16:1 reduction followed by a 16x16:1 -> 4x4:1 -> 1x1:1 expansion for the hole filling (planning on trying a higher quality 1/2 reduction/expansion instead of the 1/4 size later). Then for reprojection I blend between two motion blured colors. The first is sampled from the hole filled buffer using pixel offset plus (-0.25,0.0,0.25) times the motion vector. The second is sampled from the reprojection buffer using the reprojection position with the same offsets. So 6 texture fetches total for the color blur. The blend lerp() is weighted by the proportion of the new and reprojected "quality factor" and is clamped to a set range to insure less noise. The reprojected "quality factor" is reduced by a function of motion vector length and recirculated to insure that under motion, the screen gets more quickly updated.
+
+</div></body></html>
+
+
