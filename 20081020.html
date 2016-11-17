@@ -1,0 +1,45 @@
+<html><head><link rel="stylesheet" href="style.css"></head><body><div class="page">
+<h1>20081020 - Temporal Binned Ring Buffers</h1>
+<br>
+
+<b>Dynamic Memory with Temporal Binned Ring Buffers</b>
+<br>
+
+The idea is to take the simplest form of dynamic memory allocation, namely just allocate on a stack (like obstack but without freeing) and reduce some of its limitations.
+<br>
+<br>
+
+1. Change the stack into a circular stack or ring buffer. The limitation of running out of memory has now been transformed into the condition where memory gets overwritten.
+<br>
+<br>
+
+2. To enable the program to detect and handle cases where memory has been overridden, work with two offsets, virtual and physical. The virtual offset just keeps on allocating in order as if there was an infinite stack (ie infinite memory). In practice, even a 64bit virtual offset will eventually wrap around. The physical offset is simply the virtual offset masked when using power of two sized buffers, physical = virtual & (buffersize - 1). Allocation returns a virtual offset, and the program keeps this virtual offset instead of the physical offset. The allocator keeps track of range of virtual offsets which are still valid. This window slides as new allocations are made.
+<br>
+<br>
+
+3. In order to limit memory being overridden, budget and setup multiple ring buffers. Divide up allocations on each ring buffer based on the estimated lifetime of that data structure. This is the "temporal binning" or mapping.
+<br>
+<br>
+
+4. In terms of parallel programming, best case is to only use a ring buffer from one thread and thus avoid any sync issues. The range of virtual offsets need to be locked and only changed at a periodic sync point (such as when a frame is finished drawn). Since this window is locked, one must also handle cases where the allocation would fail (ie would overlap with the fixed window). It is important to also note that allocation with multiple threads can be done with lockless programming through atomic operations.
+<br>
+<br>
+
+5. There are some smart ways to handle issues relating to memory eventually being overridden. For example, preempt the overwrite and copy over the old data before it is overridden. Often this copy is free, because the data is going to change anyway (just write it to the new destination). Or with a streaming architecture, often this becomes a chance to stream in the data at the new required level of detail or precision. Another way to look at this construct is that the ring buffers are temporal caches. When data is (or is going to be) evicted from this temporal cache, the program must recompute the data.
+<br>
+<br>
+
+I've already gotten the, you'd be insane to do such a thing, response on this one, but I can see a few cases were such a construct is very useful. In the massively parallel future, the synchronization cost of dynamic memory allocation will be a barrier to performance. New tools and ideas will need to be employed to solve problems in ways which can continue to scale with hardware.
+<br>
+<br>
+
+<i>The core idea here is that often optimization is about intelligently choosing a constraint which enables both simplification and performance. Often choosing the constraint involves finding a good fixed mapping of the problem (or a large subset of the problem) which can be done in a very small constant (or near constant) amount of time.
+</i><br>
+<br>
+
+Another way to view this idea, is in terms of the amount of communication (to memory, between nodes, etc) or synchronization required to solve a problem. Communication requires bandwidth, and bandwidth or synchronization is often the limiting factor in the scalability and performance of an algorithm. Fixed mappings (or binning) does not require communication or synchronization between objects to resolve the mapping. Non fixed mappings usually involve some sorting or searching which has a communication cost. When the number of things grows very large, even a good logarithmic reduction in communication can still not be fast enough.
+
+
+</div></body></html>
+
+
