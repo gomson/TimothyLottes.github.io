@@ -1,0 +1,36 @@
+<html><head><link rel="stylesheet" href="style.css"></head><body><div class="page">
+<h1>20081014 - Octahedron Mapping</h1>
+<br>
+
+Often when solving a problem it is necessary to map or project a 3D space into a 2D space for efficient computation. Commonly used mappings are cubemaps, sphere maps, and dual paraboloid maps. Each have different trade offs. The octahedron map is another option. Take the 8 sided octahedron and flatten it into a texture, as in the really poor ASCII art below.
+<br><br>
+
+<pre>
+..3D...........2D...
+....................
+...+.........+--+--+
+../|\........|E/|\F|
+./A|B\.......|/A|B\|
++--+--+..TO..+--+--+
+.\C|D/.......|\C|D/|
+..\|/........|G\|/H|
+...+.........+--+--+
+
+ABCD -> -z half of octahedron
+EFGH -> +z half of octahedron
+
+For 1/8 the coordinates in the unit sphere where x,y,z all > 0,
+
+s = x / (x+y+z)
+t = y / (x+y+z)
+
+And to reverse,
+
+x = s / (s^2 + t^2 + (1-s-t)^2)^(1/2)
+y = t / (s^2 + t^2 + (1-s-t)^2)^(1/2)
+z = (1-s-t) / (s^2 + t^2 + (1-s-t)^2)^(1/2)
+</pre>
+
+</div></body></html>
+
+
