@@ -1,0 +1,55 @@
+<html><head><link rel="stylesheet" href="style.css"></head><body><div class="page">
+<h1>20140104 - GL Idea Listing</h1>
+<br>
+
+<i>Brain dump of some ways to improve GL (last updated 2014.01.25, more later)...</i><br>
+<br>
+
+<b>Memory Aliasing Textures of the Same Format but Different Sizes</b>
+<br>
+This would enable games and editors to use less memory, avoid resource reallocation at runtime, and avoid software complexity hacks to render to viewports of larger textures (border issues).<br>
+<br>
+
+<b>Power State and Clock Control</b>
+<br>
+This would provide a way to force the GPU into a fixed power state, with the knowledge that the GPU might lower the power state when thermaly throttled. This feature would enable developers to set artifically low power states for development and consistent performance testing. Likewise, would like ways to artifically cut performance of things like ALU, MEM, and TEX, for performance testing reasons.<br>
+<br>
+
+<b>Get Texture Handle for Back Buffer</b>
+<br>
+Ability to write into both the back buffer and other render targets can be very useful for various forms of post processing. The workaround for not having this functionality is either an extra wasteful copy, or doing much slower image stores.<br>
+<br>
+
+<b>64-bit Atomics</b>
+<br>
+Supported on newer GPUs from AMD and NV at least. 64-bit atomics provide ability to do a conditional atomic store of a packed {priority, payload}, with the highest or lowest priority winning the store. 32-bit atomics are rather limited in ability to support a useful sized priority or payload. This also enables software emulation of z-buffers. Could pack {24-bit depth at MSBs, 8-bit alpha, and 32-bit HDR color} into 64-bits.<br>
+<br>
+
+<b>Denormal Support Toggle</b>
+<br>
+Denormals are free on AMD and NVIDIA (but to my knowledge not supported on some vendors like Intel). Unfortunately GL is set to flush denormals to zero in graphics mode. It would be useful to have ability to query support for and then disable flush-to-zero. This has many benefits. Improved precision during computations in graphics. Unsigned 24-bit integer to/from float conversions could be factored out into an existing float multiply, fast unsigned 24-bit integer multiply via floating point, etc. This would greatly improve performance on integer perf challenged GPUs.<br>
+<br>
+
+<b>GLSL clock() Instruction</b>
+<br>
+Supported on newer GPUs from AMD and NV at least. The clock() and clock64() functions would provide a GPU-side timer query with a platform dependent timer frequency. Would be quite useful for things like interative run-time edit-recompile-test optimization. Or if clock() could provide globally consistent timing, then could be useful to enable shaders to self regulate cost to hit run-time performance targets.<br>
+<br>
+
+<b>GL_R11_G11_B10, GL_R11_G11_B10_SNORM, GL_R11UI_G11UI_B10UI, GL_R11I_G11I_B10I</b>
+<br>
+Support for 32-bit 3 channel formats beyond GL_R11F_G11F_B10F. For instance the SNORM format would be useful for vertex data. These formats could be leveraged to reduce ALU ops required for custom data pack/unpack. GCN ISA docs suggest these formats could work on at least AMD.<br>
+<br>
+
+<b>GLSL Drop the "U" Postfix for Unsigned Constants</b>
+<br>
+Needing to append "U" to unsigned constants in GLSL source ideally should not be required.<br>
+<br>
+
+<b>Standard Way to Parse glGetShaderInfoLog()</b>
+<br>
+Have a standard info log format so that an editor can easily parse on any platform. Core importance: extracting lines and errors.<br>
+<br>
+
+</div></body></html>
+
+
