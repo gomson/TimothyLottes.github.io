@@ -1,0 +1,15 @@
+<html><head><link rel="stylesheet" href="style.css"></head><body><div class="page">
+<h1>20081216 - Reprojection 0</h1>
+<br>
+<b>Reprojection</b>
+<br>
+
+Had issues with static geometry moving and changing color at the same time. Problem was because the change in color produced a slightly visible pattern (more color by the new computed points in a given frame, less in the hole filled areas). Was doing a weighted average from the reprojection and the new "hole filled" data (computed from the 6-8% of new points per frame). This weighted average was a function of reprojection Z difference, point radius, and amount of hole fill.
+<br><br>
+Went back to an even simpler idea which has solved this problem, and provided a more general solution. New prototype works under the concept that I only have to solve the noise problem. Blending between the reprojection and new data is now just a function of the change in color/intensity between the reprojection and new data. Blend more of the new data if the change is small, blend less of the new data if the change is large. No longer blending in any hole filled data (might have to change this), instead using the hole fill pass to fill over points which are likely behind opaque surfaces. So the noise reduction reduces the artifacts of change to dithered motion blur, which I should be able to smooth out using the secondary reprojection.
+<br><br>
+The results are clean and very sharp (noise reduction without bluring), but slightly noisy. Good enough for now. Looking to improve the noise reduction by keeping track of a decayed magnitude of intensity change per pixel in alpha, and using this to better weight the next blend (could also allow me to include hole fill data on initial spikes of high intensity change). Moving on to the global illumination soon.
+
+</div></body></html>
+
+
