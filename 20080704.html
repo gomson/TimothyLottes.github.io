@@ -1,0 +1,28 @@
+<html><head><link rel="stylesheet" href="style.css"></head><body><div class="page">
+<h1>20080704 - Micro Polygons II</h1>
+<br>
+
+<i>I'm out of state for the weekend, so I decided to get a bunch of ideas down for the next week, before I run of memory...</i>
+<br>
+<br>
+<b>Motion Blur in the Point Based Renderer</b>
+<br>
+The idea I have for motion blur for the new point based engine is to effectively stretch the geometry in the direction of motion, then blur in the direction of motion in the post process clean up. The way I intend to stretch the geometry is by temporal jitter of the l-system tree traversal, in combination with the engine's ability to fork multiple times from a given node (add jitter to get different points in time), and independently traverse those nodes. This should result in the object filling out its motion path leaving some pixel gaps towards the edges which the post processing cleanup should blend into a nice semi-transparent directional blur. Will be testing this when I get back home after the weekend.
+<br><br>
+<b>Post Processing</b>
+<br>
+As was hinted above in the section on motion blur, my concept to deal with transparency is temporal jitter, and to reduce the pixel space filling for transparent objects. Basically a form of dithering. So post processing is then reduced to a noise reduction filter which has the advantage of knowing depth, pixel position and size at sub-pixel accuracy (for quality antialiasing), the previous frame (for temporal consistancy), and a motion vector per pixel.
+<br><br>
+I am going to attempt to run post processing in the fisheye projection space only (instead of running a post processing pass on the entire octahedron map). This should have the advantage with the temporal jitter and sub-pixel position, that I can run with a reduced (perhaps half) resolution octahedron map. Also would enable me to really clean up the loss of resolution on the outer radii of the fisheye projection. Noise reduction is going to be a simple weighted average of a selection of pixels from the current and previous frames and perhaps mipmaps (for hole filling). To increase quality I am going to do something similar to the Crytek motion blur trick of doing multiple passes with only a small number of pixels per pass.
+<br><br>
+<b>L-System Traversal</b>
+<br>
+For now I have a fixed number of eight children per node, somewhat like a octtree but without fixed child positions. The l-system transform gives each child a position, radius and direction (quaternion), relative to the parent.
+<br><br>
+The l-system can be though of as a complex form of compression, a set of rules which enable the building of a complex system. There are some parallels here to cells and DNA. DNA is a set of rules which in combination with environmental forces shape some very complex things indeed. A large aspect of my core idea for the new engine is to have this duality between a simple set of rules (l-system) and environmental forces (massive number of players, who's actions and self made content, shape the world). More on this much later...
+<br><br>
+A side note, I'm also thinking of modeling the l-system on cells, and moving to a binary tree (from the current octtree).
+
+</div></body></html>
+
+
