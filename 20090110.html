@@ -1,0 +1,53 @@
+<html><head><link rel="stylesheet" href="style.css"></head><body><div class="page">
+<h1>20090110 - Hole Filling</h1>
+<br>
+Atom update, still working on perfecting all the issues related to reprojection and hole filling. One interesting paper related to hole filling is Efficient Point-Based Rendering Using Image Reconstruction, which describes the "push pull interpolation" image space method.
+<br><br>
+My latest prototype still has some problems to fix, but is much closer to a robust solution. My previous approaches followed a common pattern,
+<br><br>
+1. Draw new data into cleared buffer.<br>
+2. Hole fill new data.<br>
+3. Merge hole filled data with with reprojected results of last frame.<br>
+4. Repeat.<br>
+<br>
+
+My new prototype follows a new pattern,
+<br>
+<br>
+1. Draw new data into cleared buffer (point scatter).<br>
+2. Hole fill new motion vector data only.<br>
+3. Use hole filled motion vector field to reproject recirculated data.<br>
+4. Merge new data without hole filling with reproject recirculated data.<br>
+5. Use hole filling for color on the reprojection data for display only.<br>
+6. Repeat.<br>
+<br>
+
+For hole filling I'm using only one weight factor (FP16 precision stored in the alpha channel) to control interpolation in a simple image pyramid reduction and expansion. Keep in mind I'm not sampling depth. The reduction computes a weighted average of 4 pixels. The weighted average uses squared weights to bias towards higher weighted data. The expansion does not do a bilateral upsample, and instead does one bilinear fetch from the smaller mip level (better performance). The blend between the larger and smaller mip samples is done using a clamped ratio of squared weights again to bias towards higher weighted data.
+<br>
+<br>
+
+This weight factor is an estimation of pixel quality which is computed in my visibility algorithm. Pixel quality is reduced each frame based on the motion vector length to insure recirculated data looses out in future joins with new data. Lower quality data gets blended over in the hole filling process. Hole filling of sparse data works by a temporary "super" quality level which enables that data to expand outward. This super quality setting is reset in recirculation to a normal level.
+<br>
+<br>
+
+I'm actually placing 1/(quality^2) into alpha. Using 1/(quality^2) with bilinear texture filtering in the image pyramid expansion enables hole filling expansion to contract around sparse data (which needs hole filling) and not overflow into non-sparse data. This is one case where incorrectly using linear interpolation is quite useful.
+<br>
+<br>
+
+Quality in some ways functions like projected point radius (and is in fact partway a function of projected point radius). Larger values represent parent points which should not be drawn (this is a side effect of my stochastic visibility algorithm). Smaller values are marked as higher quality. Super quality (ie expansion) is set with really small quality values. This is almost counter intuitive, in that points marked with the super quality setting actually have a large projected radius. Since my visibility algorithm can only expand/contract by one tree level per frame, fast motion results in sparse point data. I use difference in project point radius from current and previous frames to detect sparse point data.
+<br>
+<br>
+
+Motion blur was added during the expansion step of hole filling. Instead of taking one sample in the larger mip level, I take an average of 4 samples offset by the motion vector field. The result is quite nice even under huge amounts of motion because of the multi-resolutional filtering.
+<br>
+<br>
+
+At this point the result has very high quality motion, very fast convergence, but is too sharp (ie not anti-aliased enough) and also not as good at hiding artifacts from missing geometry from my stochastic visibility. I believe both these problems can easily be fixed in the join step, and this is what I am working on next.
+<br>
+<br>
+<i>Honestly I'd be really surprised if you were still reading at this point. Great news if this was in some ways useful to you, for me its just another brain dump so that someday I can remember a bit of what I once worked on...</i>
+
+
+</div></body></html>
+
+
