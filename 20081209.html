@@ -1,0 +1,36 @@
+<html><head><link rel="stylesheet" href="style.css"></head><body><div class="page">
+<h1>20081209 - Atom Updates</h1>
+<br>
+
+Turns out Atom Engine v1 is very performance dependent on post PS3 GPU stencil feature support (using course stencil to limit blending overdraw, which works amazingly well on post G7x hardware). So v1 isn't a good match for PS3, and now I'm back to heavy development on v2. FYI, Atom Engine v2 is the all GPU version which is has a DX10 hardware level requirement. Current plans/progress,
+<br><br>
+<strong>Point Scatter.</strong> For Atom v2 I'm still doing basically an insane particle system which draws into a octahedron. Visibility and display traversal is solved stochasticly. So it is an inexact solution. Each frame particles draw only their children (via L-system rules) into the next frame. Temporal jitter is used to vary the particle collisions each frame. Parents (meaning particles closer to the root) have a higher priority. Priority is written out as depth, so the Z buffer handles collisions. I like to call this the "visibility waterfall", because the particle tree which represents the scene expands by only one level per frame, and changes each frame. NVPerfSDK shows that on the 8600 GTS, I'm currently ALU bound on my point scatter, and not setup, ROP, or bandwidth bound.
+<br><br>
+
+<strong>Optimizations.</strong> I've divided the engine into 2 sets of point scatter. I use a lower resolution octahedron buffer for visibility. This buffer switches between a vertical and horizontal stretched aspect ratio each frame to increase detail given a set number of particles. I then do a second point scatter into the output fisheye projection. This second scatter draws all the child points of all the lower resolution particles. The particles in this 2nd scatter don't get recirculated for visibility. With these optimizations, I was running at 90FPS on the 8600 GTS at 720P with the test engine.
+<br><br>
+
+<strong>Challenges.</strong> The particle output to the fisheye projection has holes (point scatter). Given my limit of one level scene tree expansion per frame, there is a lag for detail draw-in of newly un-occluded geometry. Also collisions in the visibility computation can cause bits of geometry to disappear once and a while. These are all really tough problems to solve!
+<br><br>
+
+<strong>Reprojection.</strong> Working on a reprojection based solution. Reprojecting the results of the previous frame given motion compensation. The temporal jitter has a side effect of enabling perfect anti-aliasing and filtering, which works well even under subpel motion reprojection. As expected, transparent rendering is working quite well with the combination of temporal dithering and reprojection. I've also merged the reprojection code with a semi-CFD code (think motion compensated advection). So the scattered points can interact in all sorts of dynamic ways. When the screen is fully dynamic and running the CFD code, I can fully hide any artifacts.
+<br><br>
+
+<strong>Static Geometry?</strong> The thing I'm having problems with currently, in all irony, is drawing fast moving non-dynamic surfaces. In these cases I have the artifacts hidden in noisy way. This I am not 100% satisfied with yet. So I'm going to attempt a dual reprojection. First reprojection/hole-filling for just the point drawing to the fisheye. This reprojection designed for fastest convergence. Then a second reprojection, which uses the first reprojection to control the smooth primary view reprojection (which includes motion blur to hide artifacts).
+<br><br>
+
+<strong>Free HDR, Free DOF.</strong> I'm using FP16 framebuffers for the reprojection, so I got free linear colorspace blending, and HDR currently running at 60-90 FPS at 720P on the 8600 GTS. DOF I haven't tried yet, but I believe I will have for free by adjusting the temporal jitter radius by a computed circle of confusion given camera parameters.
+<br><br>
+
+<strong>Global Illumination.</strong> Got 50% of the frame budgeted for physics and lighting. My ideas for lighting and shadowing fall into the realm of insanity (like the rest of this project). The idea here is to amortize the illumination computation across both time and space. Particles in the "visibility waterfall" are going to incrementally calculate illumination. I've got a relatively small number of particles per screen pixel, so I can do a lot per particle. Each frame I am going to take the octahedron buffer and do a mipmap reduction which joins particles based on maximum intensity and maximum occlusion (for shadows). Then each particle is going to raycast (perhaps backwards) each frame into the mipmap reduction. The reduction represents importance sampling. Each frame the particle does a raycast in a new direction to factor into its illumination computation. In this way I'm going to gather illumination from many directions, as the particle splits into smaller and smaller children. Children thus share raycasts from parent nodes, intermediate results used for the next frame's computation, and everything is nicely amortized.
+<br><br>
+
+<strong>Interaction, Physics.</strong> I'm expecting about 1024 root nodes in 360 view at a time. These are going to interact via semi-rigid body code (really easy to do). Child particles are going to interact via a very strange hierarchical SPH like code. And pixels interact using the above described semi-CFD/reprojection code. The challenge here is that non-root interaction has to remain consistent across frames given my strange "visibility waterfall" system. Since nodes only exist for one frame, and then disappear only to be re-spawned by a new version of the parent a frame later, I have to make sure that the re-spawn gets effected by the same thing (just at a later time) that effected the particle back two frames in time. For acceleration I'm going to be doing a weighted reduction of the octahedron based on velocity*mass. This reduction needs to also include an interaction shadow so that the re-spawn works out correctly. Roots are going to be semi-coherent across network players, interaction shadows will also be semi-coherent, and everything else (view CFD, node SPH) is going to be completely different. Going to be wild if it works... and have a backup plan if it doesn't.
+<br><br>
+
+<strong>Dynamic L-System.</strong> I've decided to toss out the animated l-system, and instead use a l-system of which the rule changes based on local surroundings and physical interaction.
+
+
+</div></body></html>
+
+
