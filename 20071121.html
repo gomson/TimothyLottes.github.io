@@ -1,0 +1,25 @@
+<html><head><link rel="stylesheet" href="style.css"></head><body><div class="page">
+<h1>20071121 - Deferred Shading III</h1>
+<br>
+
+Deferred shading is proving to be quite a gem indeed. I'm still learning what is possible with the deferred shading in my rendering path. Above are some screen shots captured while playing with material settings. While each shot shows one uniform material property on the meta-volume surfaces, I can easily adjust the material property across the surface, and have the material properties change based on physics/CFD velocity.
+<br><br>
+<b>Faking It</b>
+<br>
+Obviously there is no way I could render this in real-time without faking everything. Yep, fake lighting, fog, sub-surface scattering, reflection, refraction, and more dynamically using the same single shader and just a few material properties. BTW, I only use a 1D texture when blending in the material properties of the meta-volumes.
+<br><br>
+Of course there are trade-offs to be made in any real-time rendering pipeline. I'm using the term meta-volumes because basically I am limited to defining stuff with hierarchical 3D ellipse (2 radius ellipsoid) based sharp to fuzzy "meta-ball" like objects. So while I have perfect anti-aliasing, motion blur, and cool looking fake lighting, I cannot render what is possible using a traditional skinned polygon based pipeline.
+<br><br>
+<b>Progress</b>
+<br>
+So I'm switching to the deferred pipeline from my previous "forward" rendering pipeline, and I still haven't ported over this code path to the cubemap rendering path. Right now I really have to fake forward reflections, which is something the cubemap should fix. I also have about three optimization paths I am currently working on to speed up the deferred renderer.
+<br><br>
+The current working path blends everything in a full size framebuffer, which is quite expensive and is using reverse painters algorithm sorted drawing. I have a problem with pop-up when motion card (my term for motion stretched billboard for polygon people, or motion stretched splat for point based rendering people) order changes, which is worse now than in my previous forward rendering path.
+<br><br>
+So I have two options to fix the ordering problem, eat a second rendering pass cost to generate both blended Z and Z fade point (2 channel FP32 FBO), or somehow vary the alpha on the motion cards in a direction to correct the pop-up. The second Z pass should provide a more robust solution (like true soft particles). Also with Z, I can easily switch to a hierarchical soft particle rendering path, drawing only the smaller particles (which define "edges") in the high resolution FBO, and working on smaller FBOs for the larger softer particles. If necessary I could go with a bilateral interpolation for the upsample.
+<br><br>
+I've toyed with some other really strange ideas. Like the idea of simply doing something like ray tracing (for G-Buffer data only) the projected pixel at the center of my 64K particles, and then smartly interpolating the rest of the G-Buffer contents using a special pyramid bilateral interpolation and space filling upsample filter, then finishing up with the same deferred rendering. I'd only be raytracing 1/8 of the screen pixels per frame. From testing, only at most 16 particles ever need effect a single pixel, so this problem becomes effectively dynamically computing which 16 particles should be looked at for each of the 64K particles. I was going to simply draw the motion path of the particles into a hierarchical reduced size framebuffer, do this in 4 passes with depth pealing (each channel of a pixel becomes an id a different particle), and also divide the particle to different mipmap levels based on size. Ultimately I decided the batch, vertex load, and overhead would be too much to try this. Also I would have to do about 96 sphere intersections (4 pixels * 4 channels * 6 mipmap levels) per each of the 64K pixels, to find the 16 particles to work with, which is just too expensive.
+</div></body></html>
+
+
+

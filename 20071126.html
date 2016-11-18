@@ -1,0 +1,17 @@
+<html><head><link rel="stylesheet" href="style.css"></head><body><div class="page">
+<h1>20071126 - Optimization and More</h1>
+<br>
+
+I've found an interesting easy solution to the Z-sort order popup problem which has been an unresolved issue in the Atom engine from the get-go. The answer is in sorting incorrectly based on particle size, didn't even need to go to a separate Z write pass. Yep, I'm doing an incorrect Z sort which insures that the soft edge seams between particles always have another particle in front to mask the z-order change popup issues. Works amazingly well (since I have hierarchical particles) and only requires a simple pre-sort Z offset change based on particle radius.
+<br>
+<br>
+<i>This discovery in combination with getting the alpha blended deferred shading working, has now ended my tangent to R&D stuff, and I'm back to meeting my impending December 31st deadline for finishing up the graphics/CFD engine optimization.
+</i><br>
+<br>
+Deferred shading has also enabled me to bring back FP16 HDR (with tri-linear env lookups) at virtually no cost, and has moved the performance bottleneck to the ROP (fill rate limited during alpha blending to the G-Buffer). Drawing in reverse painters (front first) and using the stencil to cull fragments should enable me to control the fill rate (which works great in my non-deferred engine path). Seems like the G80 can stencil clip about 8x its fill rate, and this should be even better on the G84 and G92. Because of the duplicate Alphas, I need 3 FP16 MRTs currently. I'm attempting to move to 3 INT8 MRTs in the cubemap path (should need less precision for my "normals").
+
+
+</div></body></html>
+
+
+

@@ -1,0 +1,14 @@
+<html><head><link rel="stylesheet" href="style.css"></head><body><div class="page">
+<h1>20071116 - Deferred Shading II</h1>
+<br>
+
+<b>Deferred Shading with Alpha Blending of Normals?</b>
+<br>
+Back in August I forked my development path, branched out and tried Deferred Shading. I had not got it working (as can be seen if you follow the previous link) because of the problems of alpha blending normals. Unlike the traditional deferred shading path, I'm doing sorted alpha blending of material properties (including something which is not quite a normal, but serves a similar purpose) into my G-buffer.
+<br><br>
+Now I've found a trick method to blend my "normals" which modifies a shiny-to-diffuse material property (effectively changing the mipmap level in a future texture lookup). This knowledge is effectively the gateway towards a simplified shading pipeline, but I have a few more problems to solve to get there.
+
+</div></body></html>
+
+
+
