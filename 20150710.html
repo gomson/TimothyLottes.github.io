@@ -1,0 +1,69 @@
+<html><head><link rel="stylesheet" href="style.css"></head><body><div class="page">
+<h1>20150710 - Inspiration Reboot</h1>
+<br>
+
+<i>Quite inspired by the insane one still or video per day at <a href="http://beeple.tumblr.com/">beeple.tumblr.com</a>.
+Attempting to get back in the grove of consistently taking a small amount of non-work time every day to reboot fun projects.
+I'm on week 2 now of probably a three month process of healing from a torn lower back,
+sitting in front of a computer is now low enough pain to have fun again...</i><br>
+<br>
+<b>1536</b>
+<br>
+Setting a new 1536-byte (3x 512-byte sector) constraint for a bootloader + source interpreter 
+which brings up a PC in 64-bit long-mode with a nice 8x8 pix VGA font
+and with 30720-bytes (60 sectors, to fill out one track) of source text for editor and USB driver.
+USB providing thumb drive access to load in more stuff.
+Have 1st sector bringing up VGA and long mode, 
+2nd sector with 64-character font, 
+and last 512-byte sector currently in progress as the interpreter.
+Went full circle back to something slow, but dead simple:
+interpreter works on bytes as input.
+The following selection of characters appends simultaneously to a 60-bit 10 6-bit/char word string,
+and a 64-bit number,<br>
+<br>
+<pre>0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ#$@!+*-^&|=?<>_</pre>
+<br>
+Then giving a "color forth tag" like meaning to another fixed set of characters,<br>
+<br>
+<tt>~</tt> - Negate the 64-bit number.<br>
+<tt>.</tt> - Lookup word in dictionary, and push 64-bit value onto data stack.<br>
+<tt>,</tt> - Push 64-bit number on data stack.<br>
+<tt>:</tt> - Lookup word in dictionary, pop 64-bit value from data stack to word.<br>
+<tt>;</tt> - Write 32-bit number at compile position.<br>
+<tt>"</tt> - Lookup word in dictionary, interpret the string at address stored in word.<br>
+<tt>[</tt> - Lookup word in dictionary, store compile position in word, append string from [ to ] compile position.<br>
+<tt>]</tt> - When un-matched with ], this ends interpretation via RET.<br>
+<tt>\</tt> - Ignore text until the next \.<br>
+<tt>`</tt> - Lookup word in dictionary, call to address stored in word.<br>
+<br> 
+Those set of characters replace the "space" character in forth, and work like a post-fix tag working on either the string or number just parsed from input.
+The set of tags is minimal but flexible enough to build up a forth style macro language assembler,
+with everything defined in the source itself.
+More on this next time.
+One nice side effect of post-fix tags is that syntax highlight is trivial by reading characters backwards starting at the end of the block.<br>
+<br>
+<b>Sony Wega CRT HDTVs</b>
+<br>
+The old Wega CRT HDTVs work quite well.
+They apparently are nearly fixed frequency 1080 interlaced with around 540 lines (or fields) per ~60 Hz frame,
+and unlike prior NTSC CRT TVs, they seem to not do any real progressive scanning.
+Taking a working 1080i modeline and converting it to 540p and driving the CRT
+results in the Wega initiating a "mode-reset" when it doesn't see the interlaced fields for the 2nd frame.
+However 480p modes do work (perhaps with an internal conversion to 1080i).
+Given that 1080i modes are totally useless as the 60Hz interlace flicker is horrible, 
+and 540p won't work, these HDTVs should be complete garbage.
+However 720p works awesome as the TV's processing to re-sample to 1080i does not flicker any worse than 60Hz already does.
+In theory the even and odd fields (in alternating frames) share around 75% of an input line (540/720),
+and likely more if the re-sampling has some low-pass filtering.
+Drop in a PS4 game which has aliasing problems, and the CRT HDTV works like magic.
+These late model "hi-scan" Wega CRTs only had roughly 853 pixel width aperture grille:
+853x540 from what was a 1920x1080 render is a good amount of super-sampling...
+
+
+
+
+
+</div></body></html>
+
+
+
