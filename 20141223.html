@@ -1,0 +1,16 @@
+<html><head><link rel="stylesheet" href="style.css"></head><body><div class="page">
+<h1>20141223 - Transparency/OIT Thoughts</h1>
+<br>
+
+
+Possible to do the 64-bit single pass method from <a href="http://on-demand.gputechconf.com/gtc/2014/presentations/S4385-order-independent-transparency-opengl.pdf">OIT in GL4.x</a> with 32-bit atomics by packing {16-bit depth, 16-bit color channel} in 32-bits, where color channel is on a Bayer grid. Would require a demosaic.<br>
+<br>
+Benjamin 'BeRo' Rosseaux posted an example of <a href="https://gist.github.com/BeRo1985/80fbcdf16a9809c84c7b">hybrid atomic loop weighted blended order independent transparency implementation</a> which mixes the 2 pass algorithm from the "OIT in GL4" with depth weighted blending for the tail.<br>
+<br>
+If rastering in compute, might be possible to do a single pass version of "OIT in GL4" with only 32-bit atomics by packing {16-bit depth, RG},{16-bit depth, BD} into a pair of 32-bit values. Where RGBD encodes HDR. The trick is leveraging {even,odd} pairs of invocations (aka, threads) in compute to do atomics to a pair of 32-bit values where the pair is 64-bit aligned. API does not ensure that the pair of 32-bit atomics happens atomically, but in practice I believe desktop hardware (AMD/NV) will do that anyway. Clearly doing the pair of 32-bit atomics in one invocation in serial won't work.<br>
+<br>
+I still prefer stochatic methods with spatial+temporal post filtering. One such method with a K entry array per pixel, is to use a per pixel atomic to grab array index then store out {depth, color, alpha} packed into a 64-bit value. Post process does an in-register sorting network to sort, reduces to one {color,alpha}, then onto filtering, then later composite with opaque. With only K bins per pixel, it is possible to overflow, but there is a biased method to avoid overflow: stochastically do more agressive dropping of the fragment if "alpha < threshold(gl_FragCoord,K_index)". Where the dither pattern is based on gl_FragCoord, and the K_index is read (only do the atomic if the fragment is not dropped). The threshold progressively increases as K_index approaches the max K. Just a very rough front to back sort could help this out a bit (could amortize the sorting to a multipass algorithm, only doing a bit of the sort per frame). This stochatic method could be interesting if "depth" for the fragment is stochastically set to somewhere in the probability of the volume which a billboard represents. With proper noise filtering could remove the billboard order change pop problem. Also with NVIDIA's <a href="https://www.opengl.org/registry/specs/NV/shader_thread_group.txt">NV_shader_thread_group</a> extension it might be possible to reduce a per fragment atomic to a 2x2 fragment quad atomic for this kind of algorithm (but not the "OIT in GL4" algorithm).
+
+</div></body></html>
+
+
