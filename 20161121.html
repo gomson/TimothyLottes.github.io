@@ -1,0 +1,302 @@
+<html><head><link rel="stylesheet" href="style.css"></head><body><div class="page">
+<h1>20161121 - Moving Beyond Rendering With Triangles</h1>
+<br>
+<center><i>This post describes practical non-triangle rendering working backwards from the back-buffer.</i></center>
+<br>
+<h2>Deferring Filtering to Image Reconstruction</h2>
+Samples are shaded on fixed positions on objects instead of being interpolated to variable positions on a screen grid.
+Filtering and interpolation are deferred until the end of the pipeline.
+<strong>This means that shading rate is decoupled from resolution and frame rate,
+filtering quality is decoupled from shading rate and coverage or Z test rate,
+and shading is temporally stable.
+</strong>
+<br>
+<br>
+<br>
+<b>Reconstruction Happens in Post-Warped Space</b>
+<br>
+<strong>This is a non-optional critical component for image quality and performance!</strong>
+This applies if a classic non-VR game is simulating a physical camera lens
+or alternatively if a VR game is outputing to an HMD with a warped view.
+The reconstruction filtering must be applied in post-warped space to look right.
+<br>
+<br>
+<i>When a rectangular projection is bilinear fetched to implement a lens warp,
+the output pixels on average are somewhere inbetween 4 texels,
+and thus the output is that of a poor variable strength low-pass filter.
+With MSAA, those 4 texels are typically the result of a second low-pass filter.
+Part of the aim to have the app render 2x the pixels on average is to attempt to have enough aliasing
+to counteract the low-pass filter(s).
+This can never produce a high quality image.
+</i>
+<br>
+<br>
+Below is an image I recently re-found from years back using this reconstruction technique in colored monochrome
+with a warped projection and all sub-pixel sized geometry with no temporal filtering (lower quality spatial reconstruction only).
+It looks much better in video.
+<br>
+<br>
+<center><a href="20140621-A.bmp"><img src="20140621-A.bmp" width="640"></a></center>
+<br>
+
+<br>
+<b>Reconstruction Source Image</b>
+<br>
+<i>Presenting a good starting place to begin to construct a 64-bit version of what I've done in the past.
+Yes this is another good time to point out that some PC platforms still don't expose 64-bit global atomics.
+Working on fixing that ...</i>
+<br> 
+<br> 
+The source for the reconstruction pass is in the post-warped space (ie exactly what gets scanned out)
+and consists of a single 64-bit value per texel.
+The resolution of this source image can be different than the output back-buffer size.
+For instance it is possible to have 2x the area to have higher quality,
+or 0.5x of the area to have up-sampling.
+<br>
+<br>
+The 64-bit texel is a packed data structure.
+Possible example of packing below.
+Ordering requires that <tt>depth</tt> be at MSB bits,
+but in theory other values could be moved around.
+Bits per component and pre-packing transforms can be adjusted for various quality trade-offs.
+This pass is expected to be ALU bound, so optimizing pack and un-pack could be important (possibly using LDS, or accept 8-bit for all non-depth components dithering really well before quantization, using SDWA to unpack, etc).
+<br>
+<br>
+<pre>
+OFFSET  BITS  MEANING
+======  ====  =======
+48      16    Logarithmic depth, reversed (65535=near, 0=far), at MSB
+44      4     Weight (after depth so highest weight wins same depth collision)
+32      12    Green
+20      12    Red
+8       12    Blue
+4       4     Sub-pixel X offset
+0       4     Sub-pixel Y offset
+</pre>
+<br>
+In a pass before reconstruction, shaded samples are atomically scattered into this image using atomicMax64().
+So the nearest depth will win a collision (then highest weight in my example, and so on).
+<strong>The following is critical for image quality.</strong>
+Collisions are expected, and transformed into film grain.
+Right before scatter, each sample is given a spatial temporal stochastic blue-noise offset +/- one pixel in range.
+The <tt>sub-pixel offset</tt> in the packed texel
+provides the correct non-offseted original position to sub-pixel precision.
+Sub-pixel X offset can be visualized as the following.
+<br>
+<br>
+<pre>
+0 1 2 3 4 5 6 7 8 9 a b c d e f
+= = = = = = = = = = = = = = = =
+       +---------------+
+       |               |
+       .     pixel     .
+</pre>
+<br>
+<tt>Weight</tt> is the sub-pixel area of the shaded sample, probably best to decode by converting to <tt>{0.0 to 1.0}</tt> and squaring. 
+LOD fade-in and fade-out can be done stochastically and can be improved by reducing sub-pixel area to make more transparent.
+<br>
+<br>
+For <tt>depth</tt> encoding, <a href="http://outerra.blogspot.com/2012/11/maximizing-depth-buffer-range-and.html">Maximizing Depth Buffer Range and Precision on the Outerra Blog</a>
+is a great reference.
+Use <tt>log(depth + 1.0)</tt> or perhaps the modified near field linearization talked about on Outerra.
+This maximizes the depth precision in the scene.
+<br>
+<br>
+The <tt>color</tt> should be decoded from a non-linear to linear space before filtering.
+Perhaps something as easy as converting to <tt>{0.0 to 1.0}</tt> and squaring or cubing.
+<br>
+<br>
+<br>
+<b>Reconstruction Filtering</b>
+<br>
+<i>Only have time to cover the basic spatial component of the reconstruction filter.
+Incorporating a temporal component can be done for greatly increased quality.</i>
+<br>
+<br>
+Spatial filter is easy to do, 
+given an output pixel work with a fixed circular pattern of the nearest N texels in the 64-bit/texel image source.
+Example of a N=12 pattern below
+which would work well when source image size is not the same as output image size.
+<br>
+<br>
+<pre>
+  A B  
+C D E F  
+G H I J  
+  K L  
+</pre>
+<br>
+For each N texels, take the weighted average, sum the following for each sample, 
+<tt>color * (weight * f(subPixelPrecisionDistanceFromSampleToResolvedPixelCenter))</tt>, divide by the sum of weights, <tt>(weight * f(...))</tt>.
+The <tt>f()</tt> is the filter kernel which could be a Gaussian (which is <tt>exp2(-scale*dst*dst)</tt>), 
+or for something sharper a circular filter with a soft fall-off (similar to DOF filter), or something better.
+<br>
+<br>
+<br>
+<b>Grain</b>
+<br>
+After reconstruction filtering, add a linear blue-noise film grain for the final analog distraction-free output.
+<br>
+<br>
+<br>
+<b>Anti-Aliased Composite of Transparency</b>
+<br>
+The best place to composite/apply transparency is before packing and scattering the 64-bit packed samples.
+This way the sample can work with it's discrete depth value, interpolating from the likely lower resolution transparency layer.
+Ultimately transparency then maintains the same high quality filtering as everything else.
+<br>
+<br>
+Showing two stills below from a <a href="20150718.html">similar technique</a> in which a spatial temporal filter is used to filter 1-shaded sample/pixel lit fog,
+which is then applied to opaque pixels which are traced in a stocastic pattern, 
+then finally being reconstructed with a spatial temporal filter similar to the one described in this post
+(using N nearest samples, taking a weighted average).
+<br>
+<br>
+<center>
+<a href="20150718-A.png"><img src="20150718-A.png" width=640></a><br>
+<br>
+<a href="20150718-B.png"><img src="20150718-B.png" width=640></a>
+</center>
+<br>
+<br>
+<b>Image Pyramid Reconstruction</b>
+<br>
+<i>What about hole filling and variable sized points?</i>
+<br>
+Will get to data expansion in the later section, this is another option/tool which can be used for creative solutions.
+The idea is simple, take the projected size of the sample before 64-bit atomic scattering, 
+and use it to choose a level in an image pyramid
+(the pyramid is unpacked into a single texture layer).
+Before reconstruction, run from smallest layer up, 
+splitting the larger samples into interpolated smaller samples on each pass and merging with the next finer level.
+When interpolating samples that are near to each other, remember to also do a <tt>weight</tt> based average 
+and generate a new <tt>sub-pixel offset</tt>.
+Ideally weight should be adjusted so that finer samples override similar depth coarser samples.
+<br>
+<br>
+Another trick which I've <a href="20150709.html">employed in the past</a>
+is to use the coarse level data to compute depth to get a more accurate estimate of reprojection to use to help fill in the holes.
+<br>
+<br>
+<i>There are a collection of methods to manage reconstruction depending on engine details and desired quality/perf trade-offs,
+and typical reconstruction costs are similar to temporal filtering with classic triangle rendering.</i>
+<br>
+<br>
+<br>
+
+<h2>Managing a Point Based Rendering Pipeline</h2>
+<i>Lets continue with the elephant in the room, is it practical on current hardware?</i>
+From what I've seen the answer is a definite yes,
+and the gains in <a href="20161114.html">distraction free rendering</a> are substantial.
+The engine I showed at my prior GTC talk, shot below, was driving 1080p at over 120 Hz.
+That engine had per pixel costs over an order of magnitude from a simple point renderer, it was sphere traced.
+It is effectively an engine optimized to solve the problem of skinning each pixel hundreds of times
+(the sphere tracing distance estimator is a set of nested transforms).
+<br>
+<br>
+<center>
+<a href="20161114-D.bmp"><img src="20161114-D.bmp" width=800></a>
+</center>
+<br>
+<br>
+<b>Rendering Traditional Game Assets</b>
+<br>
+Keep the standard sheet of mipmaped textures for surface properties.
+Break the texture layers into SIMD friendly 8x8 tiles of texels.
+Each tile contains some amount of per-tile meta-data (which is shared across the wave and can be fetched with SMEM) such as the following.
+<br>
+<br>
+<ul>
+<li>Tile local coordinate space (offset and quaternion) used to compress object-space position
+<li>Tile bone list (if skinned)
+<li>Per texel bone weights (if skinned)
+<li>Direction and solid angle (for tile back-face culling)
+</ul>
+<br>
+Add an extra compressed texture sheet for object-space position in the tile local coordinate space.
+Now geometry is fully represented in textures,
+and only compute is needed to render.
+<br>
+<br>
+<i>Rendering becomes a process of running a compute shader to fetch tile data,
+transform, optionaly skin, and shade the collection of texels in the tile.
+Pack the 64-bit sample values,
+and output using atomicMax64() into the post-warped space for reconstruction later.</i>
+<strong>Note sample data is loaded once, processed, and written only as a minimal 64-bit value.
+Quite minimal in comparison with traditional fixed function which expands VS output to maximum size and routes around chip.
+Also the tile has good final projected spatial locality, there is enough work to hide the atomic scatter cost, and atomic operations are fire-and-forget.</strong>
+<br>
+<br>
+There are many other interesting variants, such as caching shading results in a tile cache.
+Could keep updating the most important shading until some safe point before v-sync,
+then switch to late-frame point atomic scatter for the 64-bit packed sample values.
+<br>
+<br>
+<br>
+<b>Managing Data Expansion</b>
+<br>
+<i>The other elephant in the room, how to manage the need for hierarchical data expansion?
+As in, this tile might project to a box of 8 texels, or fill a large chunk of the screen.
+Or this tile might have high amounts of perspective. Etc ...</i>
+<br>
+<br>
+My advice is to start with a temporally coherent listing of tiles,
+similar to, or effectively exactly how one manages a virtual texture.
+Except where typical virtual texturing would work in 128x128 granularity,
+this is driven in 8x8 granularity.
+Instanced objects would be given some local space in the virtual texture similar to how lightmaps have local space for instanced geometry.
+This has the great side-effect of providing a place to cache texture space shading results.
+<br>
+<br>
+It has been possible for a while now to fully manage a virtual texture on the GPU.
+Part of the tile shading process will be to run HZB occlusion on the title,
+check if it is visible, or percentage of visibility estimate which can be multiplied by projected size. 
+This drives a LOD expand/prune priority for the tile in the virtual texture.
+Adaptively manage a per-frame low watermark of visibility which is a cut-off where tiles self-prune 
+to get recycled to attach to a new part of the virtual texture which needs to get expanded.
+<br>
+<br>
+<i>Costs are thus bounded by the size of the physical tile cache.</i>
+<br>
+<br>
+Virtual texture cache has limits to how much expansion can be done in a given frame,
+typically one level/frame of expansion.
+Fast motion can demand a lot more than that when projected texels are effectively kept close to pixel sized.
+Some amount of expansion can be soked up with the <tt>"Image Pyramid Reconstruction"</tt> concept mentioned above.
+The second tool is to allow the tile itself loop and walk it's own data at different scales based on the needs of visibility or projected texel density.
+<br>
+<br>
+<br>
+<b>Tile Expansion - Variable Resolution Shading</b>
+<br>
+Tile starts at full size. Tile keeps track of a <tt>scale</tt> and <tt>{x,y}</tt> offset inside the the tile (these are low-cost dynamically uniform SGPRs).
+Transforms (including skinning) to view-space, projects to post-warped space, and drives a waveMin and waveMax to gather projected bounds.
+This projected bounds can be used to select which HZB layer to sample from for occlusion, and which level of the image pyramid to atomic scatter into.
+If the output sample density isn't fine enough,
+the tile can cut <tt>scale</tt> in half, and then quad sub-divide using <tt>{x,y}</tt> to track state as it walks across the sub-tile.
+Any sub-tile which doesn't hit texel density targets can be further sub-divided at run-time in the same shader 
+(by dropping <tt>scale</tt>, walking the sub-tile quad, and then moving to the prior <tt>scale</tt> backing out).
+<br>
+<br>
+<strong>Note this is compute. It is ok for tiles to have variable run-time, as long as they are bounded. Leverage the "Image Pyramid Reconstruction" for worst case expansion (bounded cost),
+and limit the amount of hierarchical sub-division. Fast motion and scaling will often mask the ability for anyone to focus on details in a single frame anyway.</strong>
+<br>
+<br>
+<i>There are many variations which could be quite interesting here.
+For example, the shader can still do classic procedural texturing for enhanced detail,
+except in this case the shader defined procedural detail can be fully 3D displacement mapped.</i>
+<br>
+<br>
+<br>
+<h2>Until Next Time</h2>
+The intent of this post was to begin to paint a picture of the high-level of the major components which enable a non-triangle rendering path for traditional game content,
+running backwards compatible hardware,
+to get to pixel level detail with perfect anti-aliasing, 
+with flexibibility to hit any resolution, shading rate, and frame rate trade-off.
+There are many other aspects of the solution space to dive into in the future.
+<br>
+<br>
+
+</div></body></html>
+
+

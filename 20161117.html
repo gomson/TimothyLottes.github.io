@@ -1,0 +1,64 @@
+<html><head><link rel="stylesheet" href="style.css"></head><body><div class="page">
+<h1>20161117 - Mechanics of Vulkan SPIR-V Specialization</h1>
+<br>
+
+<b>References</b>
+<br>
+<a href="https://www.khronos.org/registry/spir-v/specs/1.1/SPIRV.pdf">SPIR-V</a> |
+<a href="https://www.khronos.org/registry/vulkan/specs/1.0-extensions/pdf/vkspec.pdf">Vulkan</a>
+<br>
+<br>
+
+<b>SPIR-V Background</b>
+<br>
+<ul>
+<li>SPIR-V is a single linear stream of variable length instructions.
+<li>Each instruction starts with a 32-bit packed word <tt>{MSB: 16-bit WordCount, LSB: 16-bit Opcode}</tt>.
+<li>The <tt>WordCount</tt> enables unknown <tt>Opcode</tt> to be ignored.
+<li><tt>OpSpecConstant*</tt> instructions used to define a specialization constant.
+<li><tt>OpSpecConstantOp</tt> builds a new specializaton constant from doing an operation.
+<li><tt>OpSpecConstantOp</tt> does not support complex math like <tt>sin()</tt> and <tt>cos()</tt>.
+<li><tt>OpSpecConstant*</tt> instructions have a <tt>Result ID</tt> and sometimes a default <tt>Value</tt>.
+<li><tt>OpDecorate</tt> with <tt>SpecId</tt> associates <tt>VkSpecializationMapEntry.constantID</tt> with a <tt>Result ID</tt>.
+<li><tt>OpSpecConstant*</tt> gets reduced to <tt>OpConstant*</tt> instructions at PSO creation time.
+</ul>
+<br>
+Human readable SPIR-V example.
+<br>
+<br>
+<pre>
+%1 = OpTypeInt 32 1       ; declare a signed 32-bit type
+OpDecorate %2 SpecId 3    ; set 'constantID = 3' 
+%2 = OpSpecConstant %1 -8 ; some signed 32-bit integer constant
+</pre>
+<br>
+<b>Vulkan Background</b>
+<br>
+Showing below the related structures which show how to set specialization constants.
+<br>
+<br>
+<pre>
+typedef struct VkSpecializationMapEntry {
+  uint32_t constantID; // SpecId in SPIR-V source.
+  uint32_t offset;     // Byte offset in VkSpecializationInfo.pData for value.
+  size_t   size;
+} VkSpecializationMapEntry;
+
+// Passed into  VkPipelineShaderStageCreateInfo
+typedef struct VkSpecializationInfo {
+  uint32_t                        mapEntryCount;
+  const VkSpecializationMapEntry* pMapEntries;
+  size_t                          dataSize;
+  const void*                     pData;
+} VkSpecializationInfo;
+
+</pre>
+
+
+
+
+
+
+</div></body></html>
+
+
