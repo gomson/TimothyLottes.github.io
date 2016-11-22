@@ -1,0 +1,26 @@
+<html><head><link rel="stylesheet" href="style.css"></head><body><div class="page">
+<h1>20140810 - Front Buffer Rendering</h1>
+<br>
+
+<i>Ideas for practical front buffer rendering?</i><br>
+<br>
+The largest problem is probably variability in CPU thread scheduling. In theory not sleeping and polling causes an OS to treat the thread like a compute bound thread, increasing scheduling variability. Sleeping might increase interactiveness, but only if not blocking on a timer event (which typically has poor accuracy), and instead blocking on real IO. Attempting to track and adapt to scheduling variability is an option: sleep until the worst expected time before needing to wake, then spin until the actual event. But in practice, at interesting frame rates, I'd bet variability is too high for this to be practical.<br>
+<br>
+<b>A Better Way</b>
+<br>
+At home I'm working in 100% pull-model graphics. Meaning, what to draw is computed on the GPU, not the CPU. For a majority of the time, the CPU simply blasts the same exact rendering commands every frame. This decoupling of CPU and GPU enables the CPU to batch commands with any number of frames of latency before the GPU draws them. All IO between the CPU and GPU (gamepad input, etc) goes via low latency persistent mapped client side storage. This is fully async from the generation of draw calls. The issue of non-atomic writes and no memory barrier over PCIe is managed by sending and checking CRCs for all data transfered. The latency wall is effectively gone.<br>
+<br>
+The next step in the evolution of this system is to race scan-out using front buffer rendering instead of double buffered rendering. Have not had the time to try this yet, so the rest of this post is theory...<br>
+<br>
+Given the lack of API tools to make this easy, the core idea is to have the CPU periodically updating a "wall clock" value in persistent mapped client storage. The GPU shaders would read this value, and adapt the cost of rendering towards meeting the target framerate and sync. A background real-time priority CPU thread would write the time, then sleep, repeat. If required due to OS scheduling variability, regular CPU threads would also write out the time periodically. On platforms with no way to find the time of v-sync, likely this system would require providing the user with a tuning knob which dials in the v-sync phase (knob moves the tear line until it is off-screen).<br>
+
+
+
+
+
+
+
+
+</div></body></html>
+
+

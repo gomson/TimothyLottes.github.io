@@ -1,0 +1,92 @@
+<html><head><link rel="stylesheet" href="style.css"></head><body><div class="page">
+<h1>20140830 - HDFury Nano GX: Part 2</h1>
+<br>
+
+<i>Continuing to talk about the radical <a href="http://www.hdfury.com/shop/videoprocessors/hdf1-nano-gx/">HDFury Nano GX</a> HDMI to VGA converter...</i><br>
+<br>
+Got a better VGA monitor (ViewSonic G75f) which can do up to a 85 KHz horizontal scan, which is good for 960x540 @ 140 Hz. This works perfectly through the Nano. Getting a 16:9 aspect ratio on display is as easy has changing the monitor's vertical scaling.<br>
+<br>
+<b>Method for Generating Modelines</b>
+<br>
+Using the EDID, or fetching the modes from the monitor automatically, is effectively useless for anything interesting (non-standard). Not sure if this has more to do with the Monitor's EDID settings, what the Nano returns, or what the driver does with the EDID information. Instead I go back to classic "modelines" in the xorg configuration files.<br>
+<br>
+In order to easily generate "modelines", first take the monitors advertised peak specs, in my case, 1600x1200 @ 68Hz, run them through "cvt" and write down the "hsync". Use this as the maximum hsync the monitor can handle,<br>
+<br>
+<tt>[/etc/X11/xorg.conf.d] cvt 1600 1200 68<br>
+# 1600x1200 67.96 Hz (CVT) hsync: 84.95 kHz; pclk: 183.50 MHz<br>
+Modeline "1600x1200_68.00"  183.50  1600 1712 1880 2160  1200 1203 1207 1250 -hsync +vsync</tt><br>
+<br>
+Then use "cvt" to generate what ever modes are desired at a given resolution, making sure to limit the vertical refresh low enough such that the "hsync" value is never exceeded. At 640x480 this monitor can do 160 Hz,<br>
+<br>
+<tt>[/etc/X11/xorg.conf.d] cvt 640 480 160<br>
+# 640x480 159.42 Hz (CVT) hsync: 84.49 kHz; pclk: 73.00 MHz<br>
+Modeline "640x480_160.00"   73.00  640 688 752 864  480 483 487 530 -hsync +vsync</tt><br>
+<br>
+<b>X.org Configuration</b>
+<br>
+Thankfully with NVIDIA drivers, it is possible to completely turn off mode validation.
+This is what enables the interesting non-standard modes,
+and also enables users to destroy old VGA monitors which have no out-of-range protection.
+In the "Device" section add (this is all one line),<br>
+<br>
+<tt>
+Option "ModeValidation" "AllowNon60hzmodesDFPModes, NoEDIDDFPMaxSizeCheck, NoVertRefreshCheck, NoHorizSyncCheck, NoDFPNativeResolutionCheck, NoMaxSizeCheck, NoMaxPClkCheck, AllowNonEdidModes, NoEdidMaxPClkCheck"</tt><br>
+<br>
+Using this, I was able to try something similar to a 15.5 KHz arcade monitor modeline. This is actually for an Amiga I think. Also note "cvt" won't make correct 15.5 KHz modelines, horizontal frequency will be wrong.<br>
+<br>
+<tt>Modeline "640x240" 13.22 640 672 736 832 240 243 246 265 -hsync -vsync</tt><br>
+<br>
+Which is out of range of the ViewSonic (to low of a horizontal sync) 
+and triggers the monitor's out-of-range protection.
+The same mode seems to work on the really old VGA monitor I have (which probably supported CGA, EGA, and VGA horizontal frequencies).
+This seems to validate that newer NVIDIA GPUs and drivers (in X at least) and the Nano,
+can be made to generate the lower hsync signals needed to drive CGA arcade monitors.
+I'm still missing the conversion box required to test this (see the bottom of this post).<br>
+<br>
+<b>Solving the "Broken Panning"</b>
+<br>
+The problem I was having before is the X.org+driver automatically configuring and using both the laptop and HDMI out displays whenever I switch from "Metamode" to classic "Modeline". Since the "Modeline" was not supported by the laptop display, the display would show nothing but still be enabled, and that is why it looked as if the panning was broken. Everything was actually working, the mouse was just going over to the other display which was a black screen.<br>
+<br>
+Fixing this is easy, just disable the laptop screen using the "Monitor-<connection>" option (use the "xrandr" command line to list the display connections to find the proper name),<br>
+<br>
+<tt>
+### SETTINGS FOR THE DISPLAY WHICH IS TO BE DISABLED<br>
+Section "Monitor"<br>
+Identifier "nope"<br>
+Option "Ignore" "true"<br>
+Option "Enable" "false"<br>
+EndSection<br>
+<br>
+### SETTINGS FOR MY VGA MONITOR<br>
+Section "Monitor"<br>
+Identifier "Monitor0"<br>
+VendorName "Unknown"<br>
+ModelName "Unknown"<br>
+Option "Primary" "true"<br>
+Option "Enable" "true"<br>
+HorizSync 31-86<br>
+VertRefresh 60-162<br>
+UseModes "Modes0"<br>
+Option "DPMS"<br>
+EndSection<br>
+<br>
+### THEN IN THE SCREEN SECTION, TURN OFF THE LAPTOP DISPLAY<br>
+Section "Screen"<br>
+Identifier "Screen0"<br>
+Device "Device0"<br>
+Option "Monitor-DP-2" "nope"<br>
+Option "Monitor-HDMI-0" "Monitor0"<br>
+Monitor "Monitor0"<br>
+...</tt><br>
+<br>
+Next step is to attempt to see if I can drive both screens at different frequency and resolution. Then I can use one for programming and the other for analog output.<br>
+<br>
+
+<b>240p Arcade Options</b>
+<br>
+Great place to go for information: <a href="http://scanlines.hazard-city.de/">scanlines.hazard-city.de</a>. Under the assumption that my setup can generate a proper 240p VGA signal at the standard 15.5KHz used by arcade monitors (and NTSC TVs), <a href="http://forum.arcadecontrols.com/index.php/topic,95833.msg1278226.html#msg1278226">this thread post</a> talks about a converter which will convert that VGA signal into component for a US TV: <a href="http://www.crescendo-systems.com/transcoder.html">TC1600 VGA to YPrPb Transcoder</a> (no resampling/scaling).<br>
+
+
+</div></body></html>
+
+

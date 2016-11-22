@@ -1,0 +1,11 @@
+<html><head><link rel="stylesheet" href="style.css"></head><body><div class="page">
+<h1>20140920 - Interlacing at High Frame Rates and Low Persistence?</h1>
+<br>
+
+
+After hearing Carmack's talk at the Oculus keynote, wanted to see first hand if interlacing artifacts are still visible at high rates on low persistence displays. Tried 180Hz interlaced on my CRT (get a pair of even-line and odd-line frames every 90 times per second). Still see massive artifacts. For instance when on-screen vertical motion is some multiple of scan-out, it is possible to see the black gaps between lines. The visible size of the gap is a function of the velocity of motion. Horizontal motion also does not look good. Probably has a lot to do with resolution (running 640x480 on a CRT which can do 1600x1200). Coarse shadow mask interlaced NTSC TVs did not look as bad at low frame rates, probably because the even and odd lines would partly illuminate the same bits of the screen (or maybe they had higher persistence phosphors)? If I use the display's Vertical Moire control to align the even and odd scan-lines to the same position in space, then the output looks much better even with constant black gaps between the lines. To me this whole experiment suggests that some kind of motion adaptive de-interlacing logic is needed at high frame rates (best case) or at a minimum the OLED display controller needs to fill in the missing lines in any interlaced mode using some spatial filter.
+
+
+</div></body></html>
+
+
