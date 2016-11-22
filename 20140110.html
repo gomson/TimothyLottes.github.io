@@ -1,0 +1,18 @@
+<html><head><link rel="stylesheet" href="style.css"></head><body><div class="page">
+<h1>20140110 - Portable Read-Only Thumb Linux</h1>
+<br>
+
+Thinking about moving from the traditional harddrive installed Linux, to a tiny portable Linux running from a USB thumb drive, but booting live boot style from an ISO image.<br>
+<br>
+The USB thumb drive would have a standard MBR. This thumb drive would be partitioned into a smaller bootable FAT32 for the ISO images, and a very large exFAT for storing my data. Now that Linux has an <a href="https://github.com/dorimanx/exfat-nofuse">exFAT native kernel driver</a>, using exFAT removes the 4GB/file limit of FAT32, and can be accessed easily on other operating systems like Windows and Mac for portability.<br>
+<br>
+One core advantage of this system is that after boot from a choosen ISO image, the entire OS and applications run from RAM (no USB or harddrive access). Each restart, the machine returns back to as-new condition from the ISO image. I'd have the boot script copy out my home path from the exFAT partition before unmounting the USB thumb stick. Anything I want in my working set, I just mount then move or copy to the home path on the exFAT partition. After boot I run as root and can damage my system as much as I want. The operating system is effectively throw-away. Before shutdown I can re-mount the exFAT and store out changed home path data. Periodically I just clone the thumb stick to create some backups, and to change thumbs before the flash storage goes bad.<br>
+<br>
+Once and a while I'd need to update the ISO image, for instance updated GPU drivers. Also becomes easy to have different ISO images on the drive setup for different machines (NVIDIA or AMD GPUs for instance). For a Linux distro, I'm likely going to just chop the latest Arch Linux into only what I use (very tiny system).
+
+
+
+</div></body></html>
+
+
+
