@@ -1,0 +1,77 @@
+<html><head><link rel="stylesheet" href="style.css"></head><body><div class="page">
+<h1>20151121 - ISA Toolbox</h1>
+<br>
+
+For years now I have found that nearly everything I work on can be made better by leveraging ISA features which are not always exposed in all the graphics APIs.
+For example, currently working on a project now which could use the combination of the following,<br>
+<br>
+
+(1.) From <a href="https://www.opengl.org/registry/specs/AMD/shader_trinary_minmax.txt">AMD_shader_trinary_minmax</a>, max3().
+Direct access to max of three values in a single V_MAX3_F32 operation.
+If the GPU has 3 read ports on the register file for FMA, might at well take advantage of that for min/max/median.
+AMD's DX driver shader compiler automatically optimizes these cases, for example "min(x,min(y,z))" gets transformed to "min3(x,y,z)".
+<br>
+<br>
+
+(2.) Direct exposure of V_SIN_F32 and V_COS_F32, which have a range of +/- 512 PI and take normalized input.
+Avoids and extra V_MUL_F32 and V_FRACT_F32 per operation.
+Nearly all the time I use sin() or cos() I'm in range (no need for V_FRACT_F32). 
+Nearly all the time I'm in the {0 to 1} range for 360 degrees, 
+and need to scale by 2 PI only so code generation can later scale back by 1/2 PI.
+Portable fallback for machines without V_SIN_F32 and V_COS_F32 like functionality looks like, 
+<br>
+<br>
+<tt>float sinNormalized(float x) { return sin(x * 2.0 * PI); }<br>
+float cosNormalized(float x) { return cos(x * 2.0 * PI); }</tt><br>
+<br>
+(3.) Branching if any or all of the SIMD vector want to do something.
+Massively important tool to avoid divergence.
+For example in a full screen triangle, if any pixel needs the more complex path, 
+just have the full SIMD vector only do the complex path instead of divergently processing both complex and simple.
+API can be quite simple,
+<br>
+<br>
+<tt>
+bool anyInvocations(bool x)<br> 
+bool allInvocations(bool x)</tt><br>
+<br>
+Example of how these could map in GCN (these scalar instructions execute in parallel with vector instructions, so low cost),<br>
+<br>
+<tt>// S_CMP_NEQ_U64 x,0<br>
+// S_CBRANCH_SCCNZ<br>
+if(anyInvocations(x)) { }<br>
+<br>
+// S_CMP_EQ_U64 x,-1<br>
+// S_CBRANCH_SCCNZ<br>
+if(allInvocations(x)) { }</tt><br>
+<br>
+(4.) Quad swizzle for fragment shaders for cross-invocation communication is super useful.
+Given a 2x2 fragment quad as follows,<br>
+<br> 
+<tt>01<br>
+23</tt><br>
+<br>
+These functions would be quite useful (they map to DS_SWIZZLE_B32 in GCN),<br>
+<br>
+<tt>// Swap value horizontally.<br>
+type quadSwizzle1032(type x)<br>
+<br>
+// Swap value vertically.<br>
+type quadSwizzle2301(type x)</tt><br>
+<br>
+For example one could simultaneously write out the results of a fragment shader to the standard full screen pass
+and write out the 1/2 x 1/2 resolution next smaller mip level at the same time using an extra image store.
+Just use the following to do a 2x2 box filter in the shader,<br>
+<br> 
+<tt>boxFilterColor = quadSwizzle1032(color) + color;<br>
+boxFilterColor += quadSwizzle2301(boxFilterColor);</tt><br>
+<br>
+
+
+
+
+
+
+</div></body></html>
+
+

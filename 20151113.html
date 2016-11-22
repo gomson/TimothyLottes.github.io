@@ -1,0 +1,106 @@
+<html><head><link rel="stylesheet" href="style.css"></head><body><div class="page">
+<h1>20151113 - Rethinking the Symbolic Dictionary</h1>
+<br>
+
+<i>Another permutation of dictionary implementation for forth like languages...</i><br>
+<br>
+<b>Source</b>
+<br>
+Exported source is composed of two parts,<br>
+<br>
+(1.) Token array, where tokens can reference a local symbol by index into local hash table.<br>
+(2.) Local symbol hash table, has string for each entry.<br>
+<br>
+Strings are 64-bits maximum and are stored in a reversible nearly pre-hashed form.
+So hashing of a string is just an AND operation.
+Tokens are 32-bits.
+Local symbol hash is after the token array, so it can be trivially discarded after import.<br>
+<br>
+<b>Global Dictionary</b>
+<br>
+Global dictionary maps 32-bit index to 32-bit value.
+Each 32-bit index has an associated 64-bit string stored in the same reversible nearly pre-hashed form.
+Dictionary entries are allocated by just taking the next entry in a line.
+There is no deletion. Just two arrays (32-bit value array, and 32-bit string array), and an index for the top.
+<br>
+<br>
+
+<b>Source Import</b>
+<br>
+Starts with loaded source in memory and allocated space for one extra array,<br>
+<br>
+(1.) Source token array, gets translated to loaded-in-memory form.<br>
+(2.) Source local symbol hash table, with each entry being a 64-bit string.<br>
+(3.) Remap space, extra zeroed array with a 32-bit value per entry in local hash table.<br>
+<br>
+Import streams through the global dictionary,
+checking for a match in the source's local symbol hash table.
+Upon finding a match, it writes the global index for the symbol into the associated remap space entry.
+Import next streams through the source token array,
+replacing the local symbol index
+with the global index from the remap space entry.
+When the remap space entry is zero,
+a new symbol is allocated in the global dictionary
+(this involves adding a symbol to the end of the dictionary,
+and coping over the string from the local symbol hash table to the global dictionary string array).
+After import the local symbol hash table and remap space are discarded.
+<br>
+<br>
+This solves many of the core problems from a more conventional design where the global dictionary is a giant hash table.
+That conventional design suffers from bad cache locality (because of the huge hash table).
+This new design maintains a cache packed global dictionary (no gaps).
+That conventional design can have worst case first load behavior,
+each initial lookup of a new word in the dictionary on load would miss through to DRAM,
+adding 100 ns per lookup.
+This new design is composed of either linear streaming operations for big data
+(global dictionary, source token array, etc) all of which get hardware auto-prefetch.
+The source local symbol hash table is expected to be not too big and easily stay in cache (the only thing with random access).
+<br>
+<br>
+Note with this new design, interpreting source at run-time no longer has any hash lookup,
+just a direct lookup.<br>
+<br>
+
+<b>First Source Import</b>
+<br>
+First source import (after machine reboot) has effectively an empty dictionary,
+so import can be optimized.<br>
+<br>
+
+<b>Editing</b>
+<br>
+Edit time operations, such as find the index for an existing symbol, 
+check if a symbol already exists,
+or tab complete a symbol,
+is done via a full stream through the global dictionary string table.
+This is a linear operation with full auto-prefetch, so expected to be quite fast in practice.
+Edit time operations are limited by human factors, so not a problem.
+<br>
+<br>
+
+<b>Source Export</b>
+<br>
+Source export requires first checking how many unique symbols are in the chunk of source.
+Use a bit array with one bit per global dictionary entry.
+Zero the bit array.
+Stream through the chunk of source tokens and check for a clear bit in the bit array.
+For each clear bit, set the bit, and advance the count of unique words.
+<br>
+<br>
+Setup space for the local symbol hash.
+Scale up the unique symbol count to make sure the hashing is efficient.
+Pad up to the next power of 2 in size.
+Stream through the source tokens,
+using the token index to get a global dictionary string,
+hash the string into the local symbol hash, writing the associated string if new entry,
+and remapping the source token index to the local hash.
+<br>
+<br>
+Export is the most complex part of the design, but still quite simple.
+
+
+
+
+</div></body></html>
+
+
